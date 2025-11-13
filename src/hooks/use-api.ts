@@ -1,105 +1,102 @@
-"use client"
+import { useState, useCallback } from "react";
+import apiHelper from "@/lib/apiHelper";
+import { ApiResponse } from "@/lib/types";
+import { toast } from "sonner";
 
-import axios, { type AxiosInstance } from "axios"
-import { useState } from "react"
+// T = Tipe Data (misal: Client), U = Tipe Input Create/Update
+export function useApi<T, U = Partial<T>>(endpoint: string) {
+  const [data, setData] = useState<T[]>([]);
+  const [item, setItem] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
-
-let apiInstance: AxiosInstance | null = null
-
-function getApiInstance() {
-  if (!apiInstance) {
-    apiInstance = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-
-    apiInstance.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem("authToken")
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
-        }
-        return config
-      },
-      (error) => Promise.reject(error),
-    )
-  }
-
-  return apiInstance
-}
-
-export function useApi<T>() {
-  const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const api = getApiInstance()
-
-  const get = async (url: string) => {
-    setLoading(true)
-    setError(null)
+  // GET ALL
+  const getAll = useCallback(async (params?: any) => {
+    setLoading(true);
     try {
-      const response = await api.get<T>(url)
-      setData(response.data)
-      return response.data
-    } catch (err: any) {
-      const message = err.response?.data?.message || "An error occurred"
-      setError(message)
-      throw err
+      const res = await apiHelper.get<ApiResponse<T[]>>(endpoint, { params });
+      setData(res.data.data);
+      return res.data.data;
+    } catch (error: any) {
+      toast.error(`Failed to fetch data from ${endpoint}`);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  }, [endpoint]);
 
-  const post = async (url: string, payload: any) => {
-    setLoading(true)
-    setError(null)
+  // GET ONE
+  const getOne = useCallback(async (id: string) => {
+    setLoading(true);
     try {
-      const response = await api.post<T>(url, payload)
-      setData(response.data)
-      return response.data
-    } catch (err: any) {
-      const message = err.response?.data?.message || "An error occurred"
-      setError(message)
-      throw err
+      const res = await apiHelper.get<ApiResponse<T>>(`${endpoint}/${id}`);
+      setItem(res.data.data);
+      return res.data.data;
+    } catch (error: any) {
+      toast.error("Failed to fetch item details");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  }, [endpoint]);
 
-  const put = async (url: string, payload: any) => {
-    setLoading(true)
-    setError(null)
+  // CREATE
+  const create = async (payload: U) => {
+    setLoading(true);
     try {
-      const response = await api.put<T>(url, payload)
-      setData(response.data)
-      return response.data
-    } catch (err: any) {
-      const message = err.response?.data?.message || "An error occurred"
-      setError(message)
-      throw err
+      const res = await apiHelper.post<ApiResponse<T>>(endpoint, payload);
+      toast.success("Created successfully");
+      // Refresh list locally
+      setData((prev) => [res.data.data, ...prev]);
+      return res.data.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Creation failed";
+      toast.error(msg);
+      throw error;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const remove = async (url: string) => {
-    setLoading(true)
-    setError(null)
+  // UPDATE
+  const update = async (id: string, payload: U) => {
+    setLoading(true);
     try {
-      await api.delete(url)
-      return true
-    } catch (err: any) {
-      const message = err.response?.data?.message || "An error occurred"
-      setError(message)
-      throw err
+      const res = await apiHelper.put<ApiResponse<T>>(`${endpoint}/${id}`, payload);
+      toast.success("Updated successfully");
+      // Update list locally
+      setData((prev) => prev.map((i: any) => (i.id === id ? res.data.data : i)));
+      return res.data.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Update failed";
+      toast.error(msg);
+      throw error;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  return { data, loading, error, get, post, put, remove }
+  // DELETE
+  const remove = async (id: string) => {
+    setLoading(true);
+    try {
+      await apiHelper.delete(`${endpoint}/${id}`);
+      toast.success("Deleted successfully");
+      // Remove from list locally
+      setData((prev) => prev.filter((i: any) => i.id !== id));
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Delete failed";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    data,
+    item,
+    loading,
+    getAll,
+    getOne,
+    create,
+    update,
+    remove
+  };
 }

@@ -1,53 +1,92 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import DashboardLayout from "@/components/layouts/dashboard-layout"
-import { useAuth } from "@/hooks/use-auth"
+import type React from "react";
+import { useState, useEffect } from "react";
+import DashboardLayout from "@/components/layouts/dashboard-layout";
+import { useAuth } from "@/hooks/use-auth";
+import { User } from "@/lib/types";
 
 export default function ProfilePage() {
-  const { user } = useAuth()
-  const [isEditing, setIsEditing] = useState(false)
-  const [profile, setProfile] = useState({
-    name: user?.name || "Demo User",
-    email: user?.email || "demo@invoiceapp.com",
-    company: user?.company || "My Business",
-    phone: "+1-555-0000",
-    address: "123 Business Street",
-    city: "New York",
-    state: "NY",
-    zipCode: "10001",
-    country: "USA",
-    taxId: "TAX-12345678",
-    bankAccount: "XXXX XXXX XXXX 1234",
-  })
+  const { user, getProfile, updateProfile, loading: authLoading } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Inisialisasi profile dengan data user yang ada atau string kosong
+  const [profile, setProfile] = useState<Partial<User>>({
+    name: "",
+    email: "",
+    company: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    country: "",
+    taxId: "",
+    bankAccount: "",
+  });
 
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  // Update form state saat user data dimuat
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.name || "",
+        email: user.email || "",
+        company: user.company || "",
+        phone: user.phone || "",
+        address: user.address || "",
+        city: user.city || "",
+        state: user.state || "",
+        zipCode: user.zipCode || "",
+        country: user.country || "",
+        taxId: user.taxId || "",
+        bankAccount: user.bankAccount || "",
+      });
+    } else {
+      getProfile(); // Fetch jika belum ada
+    }
+  }, [user, getProfile]);
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-    if (!profile.name.trim()) newErrors.name = "Name is required"
-    if (!profile.email.trim()) newErrors.email = "Email is required"
-    if (!profile.company.trim()) newErrors.company = "Company name is required"
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    const newErrors: Record<string, string> = {};
+    if (!profile.name?.trim()) newErrors.name = "Name is required";
+    if (!profile.company?.trim()) newErrors.company = "Company name is required";
+    // Email biasanya tidak bisa diubah sembarangan di profile edit sederhana
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setProfile((prev) => ({
       ...prev,
       [name]: value,
-    }))
-  }
+    }));
+  };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (validateForm()) {
-      alert("Profile updated successfully!")
-      setIsEditing(false)
+      setSaving(true);
+      try {
+        await updateProfile(profile);
+        setIsEditing(false);
+      } catch (error) {
+        // Error handled by hook (toast)
+      } finally {
+        setSaving(false);
+      }
     }
+  };
+
+  if (authLoading && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading Profile...
+      </div>
+    );
   }
 
   return (
@@ -68,53 +107,83 @@ export default function ProfilePage() {
         <form onSubmit={handleSave} className="space-y-6">
           {/* Business Information */}
           <div className="card p-6">
-            <h2 className="text-lg font-bold text-foreground mb-4">Business Information</h2>
+            <h2 className="text-lg font-bold text-foreground mb-4">
+              Business Information
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="label-text">Full Name *</label>
+                <label htmlFor="name" className="label-text">
+                  Full Name *
+                </label>
                 <input
+                  id="name"
                   type="text"
                   name="name"
                   value={profile.name}
                   onChange={handleInputChange}
                   disabled={!isEditing}
-                  className={`input-field ${!isEditing && "bg-neutral-100 cursor-not-allowed"}`}
+                  className={`input-field ${
+                    !isEditing && "bg-neutral-100 cursor-not-allowed"
+                  }`}
+                  placeholder="Your Full Name"
+                  title="Full Name"
                 />
-                {errors.name && <p className="text-danger text-sm mt-1">{errors.name}</p>}
+                {errors.name && (
+                  <p className="text-danger text-sm mt-1">{errors.name}</p>
+                )}
               </div>
               <div>
-                <label className="label-text">Email *</label>
+                <label htmlFor="email" className="label-text">
+                  Email (Read-only)
+                </label>
                 <input
+                  id="email"
                   type="email"
                   name="email"
                   value={profile.email}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  className={`input-field ${!isEditing && "bg-neutral-100 cursor-not-allowed"}`}
+                  readOnly
+                  className="input-field bg-neutral-100 cursor-not-allowed"
+                  placeholder="email@example.com"
+                  title="Email Address"
                 />
-                {errors.email && <p className="text-danger text-sm mt-1">{errors.email}</p>}
               </div>
               <div>
-                <label className="label-text">Company Name *</label>
+                <label htmlFor="company" className="label-text">
+                  Company Name *
+                </label>
                 <input
+                  id="company"
                   type="text"
                   name="company"
                   value={profile.company}
                   onChange={handleInputChange}
                   disabled={!isEditing}
-                  className={`input-field ${!isEditing && "bg-neutral-100 cursor-not-allowed"}`}
+                  className={`input-field ${
+                    !isEditing && "bg-neutral-100 cursor-not-allowed"
+                  }`}
+                  placeholder="Company Name"
+                  title="Company Name"
                 />
-                {errors.company && <p className="text-danger text-sm mt-1">{errors.company}</p>}
+                {errors.company && (
+                  <p className="text-danger text-sm mt-1">{errors.company}</p>
+                )}
               </div>
               <div>
-                <label className="label-text">Phone</label>
+                <label htmlFor="phone" className="label-text">
+                  Phone
+                </label>
                 <input
+                  id="phone"
                   type="tel"
                   name="phone"
                   value={profile.phone}
                   onChange={handleInputChange}
                   disabled={!isEditing}
-                  className={`input-field ${!isEditing && "bg-neutral-100 cursor-not-allowed"}`}
+                  className={`input-field ${
+                    !isEditing && "bg-neutral-100 cursor-not-allowed"
+                  }`}
+                  placeholder="+1234567890"
+                  title="Phone Number"
                 />
               </div>
             </div>
@@ -125,58 +194,93 @@ export default function ProfilePage() {
             <h2 className="text-lg font-bold text-foreground mb-4">Address</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="label-text">Address</label>
+                <label htmlFor="address" className="label-text">
+                  Address
+                </label>
                 <input
+                  id="address"
                   type="text"
                   name="address"
                   value={profile.address}
                   onChange={handleInputChange}
                   disabled={!isEditing}
-                  className={`input-field ${!isEditing && "bg-neutral-100 cursor-not-allowed"}`}
+                  className={`input-field ${
+                    !isEditing && "bg-neutral-100 cursor-not-allowed"
+                  }`}
+                  placeholder="Street Address"
+                  title="Address"
                 />
               </div>
               <div>
-                <label className="label-text">City</label>
+                <label htmlFor="city" className="label-text">
+                  City
+                </label>
                 <input
+                  id="city"
                   type="text"
                   name="city"
                   value={profile.city}
                   onChange={handleInputChange}
                   disabled={!isEditing}
-                  className={`input-field ${!isEditing && "bg-neutral-100 cursor-not-allowed"}`}
+                  className={`input-field ${
+                    !isEditing && "bg-neutral-100 cursor-not-allowed"
+                  }`}
+                  placeholder="City"
+                  title="City"
                 />
               </div>
               <div>
-                <label className="label-text">State</label>
+                <label htmlFor="state" className="label-text">
+                  State
+                </label>
                 <input
+                  id="state"
                   type="text"
                   name="state"
                   value={profile.state}
                   onChange={handleInputChange}
                   disabled={!isEditing}
-                  className={`input-field ${!isEditing && "bg-neutral-100 cursor-not-allowed"}`}
+                  className={`input-field ${
+                    !isEditing && "bg-neutral-100 cursor-not-allowed"
+                  }`}
+                  placeholder="State"
+                  title="State"
                 />
               </div>
               <div>
-                <label className="label-text">Zip Code</label>
+                <label htmlFor="zipCode" className="label-text">
+                  Zip Code
+                </label>
                 <input
+                  id="zipCode"
                   type="text"
                   name="zipCode"
                   value={profile.zipCode}
                   onChange={handleInputChange}
                   disabled={!isEditing}
-                  className={`input-field ${!isEditing && "bg-neutral-100 cursor-not-allowed"}`}
+                  className={`input-field ${
+                    !isEditing && "bg-neutral-100 cursor-not-allowed"
+                  }`}
+                  placeholder="Zip Code"
+                  title="Zip Code"
                 />
               </div>
               <div>
-                <label className="label-text">Country</label>
+                <label htmlFor="country" className="label-text">
+                  Country
+                </label>
                 <input
+                  id="country"
                   type="text"
                   name="country"
                   value={profile.country}
                   onChange={handleInputChange}
                   disabled={!isEditing}
-                  className={`input-field ${!isEditing && "bg-neutral-100 cursor-not-allowed"}`}
+                  className={`input-field ${
+                    !isEditing && "bg-neutral-100 cursor-not-allowed"
+                  }`}
+                  placeholder="Country"
+                  title="Country"
                 />
               </div>
             </div>
@@ -184,28 +288,44 @@ export default function ProfilePage() {
 
           {/* Tax & Payment Information */}
           <div className="card p-6">
-            <h2 className="text-lg font-bold text-foreground mb-4">Tax & Payment Information</h2>
+            <h2 className="text-lg font-bold text-foreground mb-4">
+              Tax & Payment Information
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="label-text">Tax ID</label>
+                <label htmlFor="taxId" className="label-text">
+                  Tax ID
+                </label>
                 <input
+                  id="taxId"
                   type="text"
                   name="taxId"
                   value={profile.taxId}
                   onChange={handleInputChange}
                   disabled={!isEditing}
-                  className={`input-field ${!isEditing && "bg-neutral-100 cursor-not-allowed"}`}
+                  className={`input-field ${
+                    !isEditing && "bg-neutral-100 cursor-not-allowed"
+                  }`}
+                  placeholder="Tax ID"
+                  title="Tax ID"
                 />
               </div>
               <div>
-                <label className="label-text">Bank Account (Last 4 digits)</label>
+                <label htmlFor="bankAccount" className="label-text">
+                  Bank Account
+                </label>
                 <input
+                  id="bankAccount"
                   type="text"
                   name="bankAccount"
                   value={profile.bankAccount}
                   onChange={handleInputChange}
                   disabled={!isEditing}
-                  className={`input-field ${!isEditing && "bg-neutral-100 cursor-not-allowed"}`}
+                  className={`input-field ${
+                    !isEditing && "bg-neutral-100 cursor-not-allowed"
+                  }`}
+                  placeholder="Bank Account Number"
+                  title="Bank Account"
                 />
               </div>
             </div>
@@ -214,10 +334,19 @@ export default function ProfilePage() {
           {/* Actions */}
           {isEditing && (
             <div className="flex gap-3">
-              <button type="submit" className="btn-primary flex-1">
-                Save Changes
+              <button
+                type="submit"
+                disabled={saving}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save Changes"}
               </button>
-              <button type="button" onClick={() => setIsEditing(false)} className="btn-secondary flex-1">
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="btn-secondary flex-1"
+                disabled={saving}
+              >
                 Cancel
               </button>
             </div>
@@ -225,5 +354,5 @@ export default function ProfilePage() {
         </form>
       </div>
     </DashboardLayout>
-  )
+  );
 }

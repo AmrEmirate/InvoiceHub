@@ -1,136 +1,115 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useRouter, useSearchParams } from "next/navigation"
-import { Suspense, useState, useEffect } from "react"
-import DashboardLayout from "@/components/layouts/dashboard-layout"
-import { useAuth } from "@/hooks/use-auth"
-
-interface Product {
-  id: string
-  name: string
-  description: string
-  price: number
-  category: string
-  sku: string
-}
+import type React from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import DashboardLayout from "@/components/layouts/dashboard-layout";
+import { useApi } from "@/hooks/use-api";
+import { Product, Category } from "@/lib/types";
 
 function ProductsContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { user } = useAuth()
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: "1",
-      name: "Web Development",
-      description: "Custom website development",
-      price: 1500,
-      category: "Services",
-      sku: "WEB-001",
-    },
-    {
-      id: "2",
-      name: "UI/UX Design",
-      description: "Professional design services",
-      price: 800,
-      category: "Services",
-      sku: "DESIGN-001",
-    },
-    {
-      id: "3",
-      name: "Consulting",
-      description: "Business consulting",
-      price: 200,
-      category: "Services",
-      sku: "CONSULT-001",
-    },
-  ])
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>(products)
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "")
-  const [categoryFilter, setCategoryFilter] = useState(searchParams.get("category") || "all")
-  const [showAddForm, setShowAddForm] = useState(false)
+  // 1. Fetch Data dari API
+  const {
+    data: products,
+    loading: loadingProducts,
+    getAll: getProducts,
+    create: createProduct,
+    remove: deleteProduct,
+  } = useApi<Product>("products");
+
+  const { data: categories, getAll: getCategories } = useApi<Category>("categories");
+
+  // State Filter & Form
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [categoryFilter, setCategoryFilter] = useState(searchParams.get("categoryId") || "all");
+  const [showAddForm, setShowAddForm] = useState(false);
+  
   const [newProduct, setNewProduct] = useState({
     name: "",
     description: "",
     price: 0,
-    category: "Services",
+    categoryId: "", // ID Kategori, bukan nama
     sku: "",
-  })
+  });
+
+  // 2. Fetch Kategori & Produk Awal
+  useEffect(() => {
+    getCategories();
+  }, [getCategories]);
 
   useEffect(() => {
-    let filtered = products
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.sku.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    }
-    if (categoryFilter !== "all") {
-      filtered = filtered.filter((product) => product.category === categoryFilter)
-    }
-    setFilteredProducts(filtered)
-  }, [searchTerm, categoryFilter, products])
+    const params: any = {};
+    if (searchTerm) params.search = searchTerm;
+    if (categoryFilter !== "all") params.categoryId = categoryFilter;
+    getProducts(params);
+  }, [getProducts, searchTerm, categoryFilter]);
+
+  // --- Handler ---
 
   const handleSearch = (value: string) => {
-    setSearchTerm(value)
-    const params = new URLSearchParams(searchParams)
-    if (value) {
-      params.set("search", value)
-    } else {
-      params.delete("search")
-    }
-    router.push(`?${params.toString()}`)
-  }
+    setSearchTerm(value);
+    const params = new URLSearchParams(searchParams);
+    if (value) params.set("search", value);
+    else params.delete("search");
+    if (categoryFilter !== "all") params.set("categoryId", categoryFilter);
+    router.push(`?${params.toString()}`);
+  };
 
   const handleCategoryFilter = (value: string) => {
-    setCategoryFilter(value)
-    const params = new URLSearchParams(searchParams)
-    if (value !== "all") {
-      params.set("category", value)
-    } else {
-      params.delete("category")
-    }
-    router.push(`?${params.toString()}`)
-  }
-
-  const handleAddProduct = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (newProduct.name && newProduct.sku && newProduct.price > 0) {
-      const product: Product = {
-        id: Date.now().toString(),
-        ...newProduct,
-      }
-      setProducts([...products, product])
-      setNewProduct({ name: "", description: "", price: 0, category: "Services", sku: "" })
-      setShowAddForm(false)
-      alert("Product added successfully!")
-    }
-  }
-
-  const handleDeleteProduct = (id: string) => {
-    if (confirm("Are you sure you want to delete this product?")) {
-      setProducts(products.filter((p) => p.id !== id))
-    }
-  }
+    setCategoryFilter(value);
+    const params = new URLSearchParams(searchParams);
+    if (value !== "all") params.set("categoryId", value);
+    else params.delete("categoryId");
+    if (searchTerm) params.set("search", searchTerm);
+    router.push(`?${params.toString()}`);
+  };
 
   const handleReset = () => {
-    setSearchTerm("")
-    setCategoryFilter("all")
-    router.push("/products")
-  }
+    setSearchTerm("");
+    setCategoryFilter("all");
+    router.push("/products");
+  };
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newProduct.name && newProduct.sku && newProduct.price > 0 && newProduct.categoryId) {
+      try {
+        await createProduct(newProduct);
+        setNewProduct({ name: "", description: "", price: 0, categoryId: "", sku: "" });
+        setShowAddForm(false);
+      } catch (error) {
+        // Error handled by hook
+      }
+    } else {
+      alert("Please fill in all fields correctly.");
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (confirm("Are you sure you want to delete this product?")) {
+      await deleteProduct(id);
+    }
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Products & Services</h1>
-            <p className="text-neutral-600">Manage your products and services</p>
+            <h1 className="text-3xl font-bold text-foreground">
+              Products & Services
+            </h1>
+            <p className="text-neutral-600">
+              Manage your products and services
+            </p>
           </div>
-          <button onClick={() => setShowAddForm(!showAddForm)} className="btn-primary">
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="btn-primary"
+          >
             {showAddForm ? "Cancel" : "+ Add Product"}
           </button>
         </div>
@@ -145,7 +124,9 @@ function ProductsContent() {
                   <input
                     type="text"
                     value={newProduct.name}
-                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                    onChange={(e) =>
+                      setNewProduct({ ...newProduct, name: e.target.value })
+                    }
                     className="input-field"
                     placeholder="Product name"
                     required
@@ -156,7 +137,9 @@ function ProductsContent() {
                   <input
                     type="text"
                     value={newProduct.sku}
-                    onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
+                    onChange={(e) =>
+                      setNewProduct({ ...newProduct, sku: e.target.value })
+                    }
                     className="input-field"
                     placeholder="Product SKU"
                     required
@@ -169,36 +152,65 @@ function ProductsContent() {
                     min="0"
                     step="0.01"
                     value={newProduct.price}
-                    onChange={(e) => setNewProduct({ ...newProduct, price: Number.parseFloat(e.target.value) })}
+                    onChange={(e) =>
+                      setNewProduct({
+                        ...newProduct,
+                        price: Number.parseFloat(e.target.value),
+                      })
+                    }
                     className="input-field"
                     placeholder="0.00"
                     required
                   />
                 </div>
                 <div>
-                  <label className="label-text">Category</label>
+                  <label className="label-text">Category *</label>
                   <select
-                    value={newProduct.category}
-                    onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                    value={newProduct.categoryId}
+                    onChange={(e) =>
+                      setNewProduct({
+                        ...newProduct,
+                        categoryId: e.target.value,
+                      })
+                    }
+                    title="Select product category"
                     className="input-field"
+                    required
                   >
-                    <option>Services</option>
-                    <option>Products</option>
-                    <option>Support</option>
+                    <option value="">Select Category</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
                   </select>
+                  {categories.length === 0 && (
+                    <p className="text-xs text-red-500 mt-1">
+                      No categories found.
+                    </p>
+                  )}
                 </div>
                 <div className="md:col-span-2">
                   <label className="label-text">Description</label>
                   <textarea
                     value={newProduct.description}
-                    onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                    onChange={(e) =>
+                      setNewProduct({
+                        ...newProduct,
+                        description: e.target.value,
+                      })
+                    }
                     className="input-field h-20 resize-none"
                     placeholder="Product description"
                   />
                 </div>
               </div>
-              <button type="submit" className="btn-primary">
-                Save Product
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={loadingProducts}
+              >
+                {loadingProducts ? "Saving..." : "Save Product"}
               </button>
             </form>
           </div>
@@ -223,11 +235,14 @@ function ProductsContent() {
                 value={categoryFilter}
                 onChange={(e) => handleCategoryFilter(e.target.value)}
                 className="input-field"
+                title="Filter by category"
               >
                 <option value="all">All Categories</option>
-                <option value="Services">Services</option>
-                <option value="Products">Products</option>
-                <option value="Support">Support</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex items-end">
@@ -240,25 +255,46 @@ function ProductsContent() {
 
         {/* Products List */}
         <div className="card overflow-hidden">
-          {filteredProducts.length > 0 ? (
+          {loadingProducts && products.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-neutral-600">Loading products...</p>
+            </div>
+          ) : products.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Name</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">SKU</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Category</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Price</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Actions</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                      Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                      SKU
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                      Category
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                      Price
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
-                  {filteredProducts.map((product) => (
-                    <tr key={product.id} className="hover:bg-neutral-50 transition-colors">
+                  {products.map((product) => (
+                    <tr
+                      key={product.id}
+                      className="hover:bg-neutral-50 transition-colors"
+                    >
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-medium text-foreground">{product.name}</p>
-                          <p className="text-xs text-neutral-600">{product.description}</p>
+                          <p className="font-medium text-foreground">
+                            {product.name}
+                          </p>
+                          <p className="text-xs text-neutral-600">
+                            {product.description || "-"}
+                          </p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -266,15 +302,19 @@ function ProductsContent() {
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                          {product.category}
+                          {product.category?.name || "Unknown"}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-semibold text-foreground">${product.price.toFixed(2)}</span>
+                        <span className="font-semibold text-foreground">
+                          ${Number(product.price).toFixed(2)}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
-                          <button className="text-accent hover:text-accent-dark text-sm font-medium">Edit</button>
+                          <button className="text-accent hover:text-accent-dark text-sm font-medium">
+                            Edit
+                          </button>
                           <button
                             onClick={() => handleDeleteProduct(product.id)}
                             className="text-danger hover:text-red-700 text-sm font-medium"
@@ -290,19 +330,27 @@ function ProductsContent() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <p className="text-neutral-600">No products found</p>
+              <p className="text-neutral-600">
+                No products found. Try adding one!
+              </p>
             </div>
           )}
         </div>
       </div>
     </DashboardLayout>
-  )
+  );
 }
 
 export default function ProductsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
       <ProductsContent />
     </Suspense>
-  )
+  );
 }

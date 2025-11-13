@@ -1,51 +1,32 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
+import type React from "react";
+import { useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("demo@invoiceapp.com")
-  const [password, setPassword] = useState("demo123456")
-  const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  const { login, loading } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
+    e.preventDefault();
+    setError("");
+
+    if (!email || !password) {
+      setError("Please enter both email and password");
+      return;
+    }
 
     try {
-      // Demo authentication - in production, connect to your backend API
-      if (email && password) {
-        const mockUser = {
-          id: "1",
-          email: email,
-          name: "Demo User",
-          company: "My Business",
-        }
-
-        localStorage.setItem("authToken", "demo-token-" + Date.now())
-        localStorage.setItem("user", JSON.stringify(mockUser))
-
-        router.push("/home")
-      } else {
-        setError("Please enter both email and password")
-      }
-    } catch (err) {
-      setError("Login failed. Please try again.")
-    } finally {
-      setIsLoading(false)
+      await login({ email, password });
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Login failed. Please try again.";
+      setError(msg);
     }
-  }
-
-  const fillDemoCredentials = () => {
-    setEmail("demo@invoiceapp.com")
-    setPassword("demo123456")
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary to-primary-light flex items-center justify-center p-4">
@@ -70,7 +51,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="input-field"
                 placeholder="your@email.com"
-                disabled={isLoading}
+                disabled={loading}
               />
             </div>
 
@@ -82,46 +63,38 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="input-field"
                 placeholder="Enter your password"
-                disabled={isLoading}
+                disabled={loading}
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm">{error}</div>
+              <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm">
+                {error}
+              </div>
             )}
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={loading}
               className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? "Logging in..." : "Login"}
+              {loading ? "Logging in..." : "Login"}
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-neutral-200 space-y-4">
-            <button
-              onClick={fillDemoCredentials}
-              className="w-full text-center text-sm text-accent hover:text-accent-dark font-medium"
-            >
-              Use Demo Credentials
-            </button>
-            <p className="text-center text-sm text-neutral-600">
+          <div className="mt-6 pt-6 border-t border-neutral-200 text-center">
+            <p className="text-sm text-neutral-600">
               <span>Don't have an account? </span>
-              <Link href="/signup" className="text-accent hover:text-accent-dark font-medium">
+              <Link
+                href="/signup"
+                className="text-accent hover:text-accent-dark font-medium"
+              >
                 Sign up here
               </Link>
             </p>
           </div>
         </div>
-
-        {/* Demo Info */}
-        <div className="card p-4 bg-blue-50 border-blue-200">
-          <p className="text-xs font-medium text-blue-900 mb-2">Demo Credentials:</p>
-          <p className="text-xs text-blue-800">Email: demo@invoiceapp.com</p>
-          <p className="text-xs text-blue-800">Password: demo123456</p>
-        </div>
       </div>
     </div>
-  )
+  );
 }

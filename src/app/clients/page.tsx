@@ -1,105 +1,72 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useRouter, useSearchParams } from "next/navigation"
-import { Suspense, useState, useEffect } from "react"
-import DashboardLayout from "@/components/layouts/dashboard-layout"
-import { useAuth } from "@/hooks/use-auth"
-
-interface Client {
-  id: string
-  name: string
-  email: string
-  phone: string
-  address: string
-  invoicesCount: number
-}
+import type React from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import DashboardLayout from "@/components/layouts/dashboard-layout";
+import { useApi } from "@/hooks/use-api"; // Gunakan hook API kita
+import { Client } from "@/lib/types"; // Gunakan tipe data yang sinkron dengan BE
 
 function ClientsContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { user } = useAuth()
-  const [clients, setClients] = useState<Client[]>([
-    {
-      id: "1",
-      name: "Acme Corporation",
-      email: "contact@acme.com",
-      phone: "+1-555-0001",
-      address: "123 Business Ave, NY",
-      invoicesCount: 5,
-    },
-    {
-      id: "2",
-      name: "Tech Innovations",
-      email: "hello@techino.com",
-      phone: "+1-555-0002",
-      address: "456 Tech Park, SF",
-      invoicesCount: 3,
-    },
-    {
-      id: "3",
-      name: "Global Solutions Ltd",
-      email: "info@globalsol.com",
-      phone: "+44-201-555-0003",
-      address: "789 Global St, London",
-      invoicesCount: 8,
-    },
-  ])
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // 1. Ganti mock state dengan useApi
+  const { data: clients, loading, getAll, create, remove } = useApi<Client>("clients");
 
-  const [filteredClients, setFilteredClients] = useState<Client[]>(clients)
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "")
-  const [showAddForm, setShowAddForm] = useState(false)
+  // State untuk pencarian dan form UI
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [showAddForm, setShowAddForm] = useState(false);
+  
+  // State untuk form tambah client baru
   const [newClient, setNewClient] = useState({
     name: "",
     email: "",
     phone: "",
     address: "",
-  })
+    paymentPreferences: "", // Menyesuaikan dengan schema DB
+  });
 
+  // 2. Ambil data dari API saat komponen dimuat atau pencarian berubah
   useEffect(() => {
-    let filtered = clients
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (client) =>
-          client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          client.email.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    }
-    setFilteredClients(filtered)
-  }, [searchTerm, clients])
+    // Panggil API dengan parameter search jika ada
+    getAll({ search: searchTerm });
+  }, [getAll, searchTerm]);
 
   const handleSearch = (value: string) => {
-    setSearchTerm(value)
-    const params = new URLSearchParams(searchParams)
+    setSearchTerm(value);
+    const params = new URLSearchParams(searchParams);
     if (value) {
-      params.set("search", value)
+      params.set("search", value);
     } else {
-      params.delete("search")
+      params.delete("search");
     }
-    router.push(`?${params.toString()}`)
-  }
+    router.push(`?${params.toString()}`);
+  };
 
-  const handleAddClient = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleAddClient = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (newClient.name && newClient.email) {
-      const client: Client = {
-        id: Date.now().toString(),
-        ...newClient,
-        invoicesCount: 0,
+      try {
+        // Panggil API create
+        await create(newClient);
+        
+        // Reset form
+        setNewClient({ name: "", email: "", phone: "", address: "", paymentPreferences: "" });
+        setShowAddForm(false);
+        
+        // Data akan otomatis refresh karena create() di hook memperbarui state lokal
+      } catch (error) {
+        // Error sudah ditangani oleh hook (toast)
       }
-      setClients([...clients, client])
-      setNewClient({ name: "", email: "", phone: "", address: "" })
-      setShowAddForm(false)
-      alert("Client added successfully!")
     }
-  }
+  };
 
-  const handleDeleteClient = (id: string) => {
+  const handleDeleteClient = async (id: string) => {
     if (confirm("Are you sure you want to delete this client?")) {
-      setClients(clients.filter((c) => c.id !== id))
+      await remove(id);
     }
-  }
+  };
 
   return (
     <DashboardLayout>
@@ -109,12 +76,15 @@ function ClientsContent() {
             <h1 className="text-3xl font-bold text-foreground">Clients</h1>
             <p className="text-neutral-600">Manage your client information</p>
           </div>
-          <button onClick={() => setShowAddForm(!showAddForm)} className="btn-primary">
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="btn-primary"
+          >
             {showAddForm ? "Cancel" : "+ Add Client"}
           </button>
         </div>
 
-        {/* Add Client Form */}
+        {/* Add Client Form - Mempertahankan desain asli */}
         {showAddForm && (
           <div className="card p-6 bg-blue-50 border-blue-200">
             <form onSubmit={handleAddClient} className="space-y-4">
@@ -124,7 +94,9 @@ function ClientsContent() {
                   <input
                     type="text"
                     value={newClient.name}
-                    onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                    onChange={(e) =>
+                      setNewClient({ ...newClient, name: e.target.value })
+                    }
                     className="input-field"
                     placeholder="Client name"
                     required
@@ -135,7 +107,9 @@ function ClientsContent() {
                   <input
                     type="email"
                     value={newClient.email}
-                    onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                    onChange={(e) =>
+                      setNewClient({ ...newClient, email: e.target.value })
+                    }
                     className="input-field"
                     placeholder="client@example.com"
                     required
@@ -146,7 +120,9 @@ function ClientsContent() {
                   <input
                     type="tel"
                     value={newClient.phone}
-                    onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                    onChange={(e) =>
+                      setNewClient({ ...newClient, phone: e.target.value })
+                    }
                     className="input-field"
                     placeholder="+1-555-0000"
                   />
@@ -156,14 +132,16 @@ function ClientsContent() {
                   <input
                     type="text"
                     value={newClient.address}
-                    onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
+                    onChange={(e) =>
+                      setNewClient({ ...newClient, address: e.target.value })
+                    }
                     className="input-field"
                     placeholder="Client address"
                   />
                 </div>
               </div>
-              <button type="submit" className="btn-primary">
-                Save Client
+              <button type="submit" disabled={loading} className="btn-primary">
+                {loading ? "Saving..." : "Save Client"}
               </button>
             </form>
           </div>
@@ -180,20 +158,31 @@ function ClientsContent() {
           />
         </div>
 
-        {/* Clients List */}
+        {/* Clients List - Mempertahankan desain Grid/Kartu */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredClients.length > 0 ? (
-            filteredClients.map((client) => (
-              <div key={client.id} className="card p-6 hover:shadow-md transition-shadow">
-                <h3 className="text-lg font-bold text-foreground mb-2">{client.name}</h3>
+          {loading && clients.length === 0 ? (
+             <div className="col-span-full text-center py-12">
+               <p className="text-neutral-600">Loading clients...</p>
+             </div>
+          ) : clients.length > 0 ? (
+            clients.map((client) => (
+              <div
+                key={client.id}
+                className="card p-6 hover:shadow-md transition-shadow"
+              >
+                <h3 className="text-lg font-bold text-foreground mb-2">
+                  {client.name}
+                </h3>
                 <div className="space-y-2 text-sm text-neutral-600 mb-4">
                   <p>📧 {client.email}</p>
-                  <p>📞 {client.phone}</p>
-                  <p>📍 {client.address}</p>
+                  <p>📞 {client.phone || "-"}</p>
+                  <p>📍 {client.address || "-"}</p>
                 </div>
                 <div className="py-3 border-t border-neutral-200 mb-4">
                   <p className="text-sm text-neutral-600">
-                    <span className="font-medium text-foreground">{client.invoicesCount}</span> invoices
+                    {/* Backend kita belum mengirim count invoice, jadi kita default ke 0 atau perlu update BE */}
+                    <span className="font-medium text-foreground">0</span>{" "}
+                    invoices
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -215,13 +204,19 @@ function ClientsContent() {
         </div>
       </div>
     </DashboardLayout>
-  )
+  );
 }
 
 export default function ClientsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
       <ClientsContent />
     </Suspense>
-  )
+  );
 }
