@@ -2,61 +2,96 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth"; // Gunakan hook auth kita
 
-export default function Sidebar() {
+interface NavItem {
+  label: string;
+  href: string;
+  icon: string;
+}
+
+const navItems: NavItem[] = [
+  { label: "Home", href: "/home", icon: "🏠" },
+  { label: "Dashboard", href: "/dashboard", icon: "📊" },
+  { label: "Invoices", href: "/invoices", icon: "📄" },
+  { label: "Clients", href: "/clients", icon: "👥" },
+  { label: "Products", href: "/products", icon: "📦" },
+  { label: "Categories", href: "/categories", icon: "🏷️" }, // Item Baru
+  { label: "Profile", href: "/profile", icon: "⚙️" },
+];
+
+export default function Sidebar({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
   const pathname = usePathname();
+  const { logout } = useAuth(); // Ambil fungsi logout dari hook
 
-  const menuItems = [
-    { name: "Dashboard", href: "/dashboard", icon: "📊" },
-    { name: "Invoices", href: "/invoices", icon: "📄" },
-    { name: "Clients", href: "/clients", icon: "👥" },
-    { name: "Products", href: "/products", icon: "📦" },
-    { name: "Categories", href: "/categories", icon: "🏷️" },
-    { name: "Profile", href: "/profile", icon: "👤" },
-  ];
+  const handleNavClick = () => {
+    if (window.innerWidth < 768) {
+      onClose();
+    }
+  };
 
   return (
-    <aside className="w-64 bg-white border-r border-neutral-200 h-screen fixed left-0 top-0 flex flex-col">
-      {/* Logo */}
-      <div className="p-6 border-b border-neutral-200">
-        <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
-            ₹
+    <>
+      <aside
+        className={`${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        } fixed md:relative md:translate-x-0 left-0 top-0 z-50 w-64 h-screen bg-primary text-white transition-transform duration-300 overflow-hidden flex flex-col md:transition-none`}
+      >
+        <div className="p-6 border-b border-primary-light flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center font-bold text-lg">
+              ₹
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="font-bold text-lg">InvoiceHub</h1>
+              <p className="text-xs text-neutral-400">Management</p>
+            </div>
           </div>
-          <span className="text-xl font-bold text-foreground">InvoiceHub</span>
-        </Link>
-      </div>
+          <button
+            onClick={onClose}
+            className="md:hidden text-xl hover:text-neutral-300 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
 
-      {/* Menu */}
-      <nav className="flex-1 p-4 overflow-y-auto">
-        <ul className="space-y-2">
-          {menuItems.map((item) => {
-            const isActive = pathname.startsWith(item.href);
+        <nav className="flex-1 p-4 space-y-2">
+          {navItems.map((item) => {
+            const isActive =
+              pathname === item.href || pathname.startsWith(item.href + "/");
             return (
-              <li key={item.name}>
-                <Link
-                  href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-blue-50 text-blue-600 font-medium"
-                      : "text-neutral-600 hover:bg-neutral-50 hover:text-foreground"
-                  }`}
-                >
-                  <span className="text-xl">{item.icon}</span>
-                  <span>{item.name}</span>
-                </Link>
-              </li>
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={handleNavClick}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  isActive
+                    ? "bg-accent text-white"
+                    : "text-neutral-300 hover:bg-primary-lighter"
+                }`}
+              >
+                <span className="text-lg flex-shrink-0">{item.icon}</span>
+                <span className="font-medium">{item.label}</span>
+              </Link>
             );
           })}
-        </ul>
-      </nav>
+        </nav>
 
-      {/* Footer (Opsional) */}
-      <div className="p-4 border-t border-neutral-200">
-        <p className="text-xs text-center text-neutral-400">
-          © 2025 InvoiceHub
-        </p>
-      </div>
-    </aside>
+        <div className="p-4 border-t border-primary-light">
+          <button
+            onClick={logout} // Panggil fungsi logout dari hook
+            className="w-full px-4 py-2 bg-danger/10 text-danger rounded-lg hover:bg-danger/20 transition-colors text-sm font-medium"
+          >
+            Logout
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

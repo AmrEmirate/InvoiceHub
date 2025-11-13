@@ -1,27 +1,41 @@
-"use client"
+"use client";
 
-import type React from "react"
+import { useState } from "react";
+import Sidebar from "@/components/navigation/sidebar";
+import TopBar from "@/components/navigation/top-bar";
 
-import { useState } from "react"
-import Sidebar from "@/components/navigation/sidebar"
-import TopBar from "@/components/navigation/top-bar"
-
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-neutral-50">
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+    <div className="flex min-h-screen bg-neutral-50">
+      {/* Sidebar - Menerima state isOpen dan onClose */}
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+      />
+
+      {/* Overlay untuk menutup sidebar di mobile */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-40 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
       )}
 
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-4 md:p-6 max-w-7xl mx-auto">{children}</div>
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* TopBar - Menerima fungsi onToggleSidebar */}
+        <TopBar onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+
+        {/* Main Content */}
+        <main className="flex-1 p-4 md:p-6 overflow-auto">
+          {children}
         </main>
       </div>
     </div>
-  )
+  );
 }

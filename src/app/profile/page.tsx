@@ -9,8 +9,9 @@ import { User } from "@/lib/types";
 export default function ProfilePage() {
   const { user, getProfile, updateProfile, loading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   
-  // Inisialisasi profile dengan data user yang ada atau string kosong
+  // Inisialisasi state profile
   const [profile, setProfile] = useState<Partial<User>>({
     name: "",
     email: "",
@@ -25,7 +26,7 @@ export default function ProfilePage() {
     bankAccount: "",
   });
 
-  // Update form state saat user data dimuat
+  // Update form state saat user data dimuat dari hook
   useEffect(() => {
     if (user) {
       setProfile({
@@ -42,18 +43,17 @@ export default function ProfilePage() {
         bankAccount: user.bankAccount || "",
       });
     } else {
-      getProfile(); // Fetch jika belum ada
+      // Jika user belum ada di state, coba fetch ulang
+      getProfile();
     }
   }, [user, getProfile]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!profile.name?.trim()) newErrors.name = "Name is required";
     if (!profile.company?.trim()) newErrors.company = "Company name is required";
-    // Email biasanya tidak bisa diubah sembarangan di profile edit sederhana
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -74,7 +74,7 @@ export default function ProfilePage() {
         await updateProfile(profile);
         setIsEditing(false);
       } catch (error) {
-        // Error handled by hook (toast)
+        // Error sudah ditangani oleh hook (toast)
       } finally {
         setSaving(false);
       }
@@ -84,7 +84,7 @@ export default function ProfilePage() {
   if (authLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        Loading Profile...
+        <div className="text-lg text-neutral-600">Loading Profile...</div>
       </div>
     );
   }
