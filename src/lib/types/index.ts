@@ -17,6 +17,7 @@ export interface User {
 }
 
 export interface Client {
+  [x: string]: any;
   id: string;
   name: string;
   email: string;

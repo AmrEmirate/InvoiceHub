@@ -7,11 +7,22 @@ import DashboardLayout from "@/components/layouts/dashboard-layout";
 import { useApi } from "@/hooks/use-api";
 import { Category } from "@/lib/types";
 
+// --- 1. IMPORT BARU ---
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+// --- 2. BUAT SKEMA VALIDASI ---
+const categorySchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters"),
+});
+
+type CategoryFormData = z.infer<typeof categorySchema>;
+
 function CategoriesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // 1. Gunakan hook useApi untuk endpoint "categories"
   const {
     data: categories,
     loading,
@@ -19,7 +30,7 @@ function CategoriesContent() {
     create,
     update,
     remove,
-  } = useApi<Category>("categories");
+  } = useApi<Category, CategoryFormData>("categories");
 
   // State UI
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
@@ -27,12 +38,19 @@ function CategoriesContent() {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // State Form
-  const [formData, setFormData] = useState({
-    name: "",
+  // --- 3. INISIALISASI REACT-HOOK-FORM ---
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<CategoryFormData>({
+    resolver: zodResolver(categorySchema),
+    defaultValues: { name: "" },
   });
 
-  // 2. Fetch Data
+  // Fetch Data
   useEffect(() => {
     getAll({ search: searchTerm });
   }, [getAll, searchTerm]);
@@ -48,31 +66,35 @@ function CategoriesContent() {
   };
 
   const handleOpenAdd = () => {
-    setFormData({ name: "" });
+    reset({ name: "" }); // Reset form
     setIsEditing(false);
     setSelectedId(null);
     setShowForm(true);
   };
 
   const handleOpenEdit = (category: Category) => {
-    setFormData({ name: category.name });
+    setValue("name", category.name); // Isi form
     setIsEditing(true);
     setSelectedId(category.id);
     setShowForm(true);
   };
+  
+  const handleCloseForm = () => {
+    setShowForm(false);
+    reset({ name: "" });
+    setIsEditing(false);
+    setSelectedId(null);
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name) return;
-
+  // --- 4. PERBARUI SUBMIT HANDLER ---
+  const onSubmit = async (data: CategoryFormData) => {
     try {
       if (isEditing && selectedId) {
-        await update(selectedId, formData);
+        await update(selectedId, data);
       } else {
-        await create(formData);
+        await create(data);
       }
-      setShowForm(false);
-      setFormData({ name: "" });
+      handleCloseForm();
     } catch (error) {
       // Error handled by hook
     }
@@ -93,34 +115,34 @@ function CategoriesContent() {
             <h1 className="text-3xl font-bold text-foreground">Categories</h1>
             <p className="text-neutral-600">Manage product categories</p>
           </div>
-          <button onClick={handleOpenAdd} className="btn-primary">
+          <button onClick={showForm ? handleCloseForm : handleOpenAdd} className="btn-primary">
             {showForm ? "Cancel" : "+ Add Category"}
           </button>
         </div>
 
-        {/* Form Section (Muncul saat Add/Edit diklik) */}
+        {/* Form Section */}
         {showForm && (
           <div className="card p-6 bg-blue-50 border-blue-200 max-w-xl">
             <h2 className="text-lg font-bold text-foreground mb-4">
               {isEditing ? "Edit Category" : "New Category"}
             </h2>
-            <form onSubmit={handleSubmit} className="flex gap-4 items-end">
+            {/* --- 5. HUBUNGKAN FORM --- */}
+            <form onSubmit={handleSubmit(onSubmit)} className="flex gap-4 items-start">
               <div className="flex-1">
                 <label className="label-text">Category Name *</label>
                 <input
                   type="text"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="input-field w-full"
+                  {...register("name")} // Gunakan register
+                  className={`input-field w-full ${errors.name ? 'border-red-500' : ''}`}
                   placeholder="e.g. Services, Electronics"
-                  required
                 />
+                {errors.name && (
+                  <p className="text-danger text-sm mt-1">{errors.name.message}</p>
+                )}
               </div>
               <button
                 type="submit"
-                className="btn-primary whitespace-nowrap"
+                className="btn-primary whitespace-nowrap mt-6"
                 disabled={loading}
               >
                 {loading ? "Saving..." : isEditing ? "Update" : "Save"}
@@ -140,7 +162,7 @@ function CategoriesContent() {
           />
         </div>
 
-        {/* Categories List */}
+        {/* Categories List (Tidak berubah) */}
         <div className="card overflow-hidden">
           {loading && categories.length === 0 ? (
             <div className="text-center py-12">

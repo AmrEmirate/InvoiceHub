@@ -9,7 +9,6 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
 
-  // Load user dari localStorage saat mount
   useEffect(() => {
     const initAuth = () => {
       if (typeof window !== "undefined") {
@@ -32,23 +31,21 @@ export function useAuth() {
     initAuth();
   }, []);
 
-  // Gunakan useCallback untuk menstabilkan fungsi
-
   const register = useCallback(async (data: any) => {
     setLoading(true);
     try {
       const res = await apiHelper.post<ApiResponse<null>>("/auth/register", data);
-      toast.success("Registration successful!", {
+      toast.success("Check your email!", {
         description: res.data.message,
       });
-      router.push("/login");
     } catch (error: any) {
       const msg = error.response?.data?.message || "Registration failed";
       toast.error("Error", { description: msg });
+      throw error;
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, []);
 
   const login = useCallback(async (data: any) => {
     setLoading(true);
@@ -65,6 +62,7 @@ export function useAuth() {
     } catch (error: any) {
       const msg = error.response?.data?.message || "Login failed";
       toast.error("Error", { description: msg });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -106,6 +104,33 @@ export function useAuth() {
     }
   }, []);
 
+  // --- FUNGSI 'SET PASSWORD' YANG KITA TAMBAHKAN ---
+  const setPassword = useCallback(async (token: string, password: string) => {
+    setLoading(true);
+    try {
+      const res = await apiHelper.post<ApiResponse<null>>(
+        "/auth/set-password",
+        {
+          token,
+          password,
+        }
+      );
+
+      toast.success("Password set!", {
+        description: res.data.message,
+      });
+      
+      router.push("/login");
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to set password";
+      toast.error("Error", { description: msg });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  // --- PERBAIKAN DI SINI ---
   return {
     user,
     loading,
@@ -113,6 +138,7 @@ export function useAuth() {
     login,
     logout,
     getProfile,
-    updateProfile
+    updateProfile,
+    setPassword, // <-- Pastikan ini ditambahkan
   };
 }

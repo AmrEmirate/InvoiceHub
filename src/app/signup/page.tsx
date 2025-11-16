@@ -6,12 +6,10 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth"; // Menggunakan hook baru
 
 export default function SignupPage() {
-  const { register, loading } = useAuth(); // Ambil fungsi register & loading dari hook
+  const { register, loading } = useAuth(); // Ambil fungsi register & loading
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    password: "",
-    confirmPassword: "",
     company: "",
   });
   const [error, setError] = useState("");
@@ -27,38 +25,23 @@ export default function SignupPage() {
     e.preventDefault();
     setError("");
 
-    // Validasi Frontend
-    if (
-      !formData.name ||
-      !formData.email ||
-      !formData.password ||
-      !formData.company
-    ) {
+    // Validasi Frontend (Sederhana)
+    if (!formData.name || !formData.email || !formData.company) {
       setError("Please fill in all fields");
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
       return;
     }
 
     try {
       // Panggil fungsi register dari hook useAuth
-      // Hook ini akan menangani request API dan redirect ke /login jika sukses
+      // Hook ini akan menangani request API
       await register({
         name: formData.name,
         email: formData.email,
-        password: formData.password,
         company: formData.company,
       });
+      // Jika sukses, hook useAuth akan menampilkan toast
+      // dan (opsional) bisa me-redirect atau menampilkan pesan sukses
     } catch (err: any) {
-      // Tangkap error jika ada (hook juga menampilkan toast)
       const msg =
         err.response?.data?.message || "Signup failed. Please try again.";
       setError(msg);
@@ -90,6 +73,7 @@ export default function SignupPage() {
                 className="input-field"
                 placeholder="John Doe"
                 disabled={loading}
+                required
               />
             </div>
 
@@ -103,6 +87,7 @@ export default function SignupPage() {
                 className="input-field"
                 placeholder="Your Business"
                 disabled={loading}
+                required
               />
             </div>
 
@@ -116,36 +101,12 @@ export default function SignupPage() {
                 className="input-field"
                 placeholder="your@email.com"
                 disabled={loading}
+                required
               />
             </div>
 
-            <div>
-              <label className="label-text text-foreground">Password</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="input-field"
-                placeholder="At least 6 characters"
-                disabled={loading}
-              />
-            </div>
+            {/* FIELD PASSWORD DAN CONFIRM PASSWORD DIHAPUS */}
 
-            <div>
-              <label className="label-text text-foreground">Confirm Password</label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="input-field"
-                placeholder="Confirm password"
-                disabled={loading}
-              />
-            </div>
-
-            {/* Menampilkan Error */}
             {error && (
               <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm">
                 {error}
@@ -157,7 +118,7 @@ export default function SignupPage() {
               disabled={loading}
               className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Creating Account..." : "Sign Up"}
+              {loading ? "Sending..." : "Sign Up"}
             </button>
           </form>
 
