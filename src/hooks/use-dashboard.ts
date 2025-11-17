@@ -5,8 +5,14 @@ import apiHelper from "@/lib/apiHelper"; // Impor apiHelper untuk request kustom
 import { toast } from "sonner"; // Impor toast
 
 export function useDashboard() {
-  const { getAll, loading: statsLoading } = useApi<Invoice>("invoices");
-  
+  // Gunakan 'useApi' hanya untuk data 'recentInvoices'
+  const {
+    data: recentInvoices,
+    getAll,
+    loading: invoicesLoading,
+  } = useApi<Invoice>("invoices");
+
+  // --- PERBAIKAN: Berikan nilai default untuk 'stats' ---
   const [stats, setStats] = useState({
     totalInvoices: 0,
     paidInvoices: 0,
@@ -14,55 +20,50 @@ export function useDashboard() {
     overdueInvoices: 0,
     totalRevenue: 0,
   });
-  const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([]);
-  
-  // --- STATE BARU UNTUK CHART ---
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  // --- State baru untuk chart ---
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
 
-  // --- Gunakan useCallback untuk fetch ---
-  const fetchDashboardData = useCallback(async () => {
+  // --- useCallback untuk fetch data stats (Kartu & Total) ---
+  const fetchDashboardStats = useCallback(async () => {
+    setStatsLoading(true);
     try {
-      // 1. Fetch data stats (dari hook useApi)
-      // Kita set limit 5 karena kita hanya butuh 5 data terbaru
-      const invoiceData = await getAll({ page: 1, limit: 5 }); 
-      
-      if (invoiceData) {
-        // Ambil total dari metadata paginasi (ini lebih akurat)
-        const total = invoiceData.totalItems;
-        
-        // Ambil 5 invoice terbaru
-        setRecentInvoices(invoiceData.data);
-        
-        // (CATATAN: Stats ini hanya dari 5 invoice, 
-        // idealnya endpoint /stats BE harus menghitung semua)
-        // Mari kita asumsikan /stats dari BE Anda (seperti di invoice.service.ts)
-        // melakukan perhitungan yang benar. Kita panggil itu secara terpisah.
-        
-        // Mari kita panggil endpoint /stats yang sebenarnya
-        const statsRes = await apiHelper.get("/invoices/stats");
-        setStats(statsRes.data.data.stats);
-
-      }
+      // Panggil endpoint /stats yang sudah kita perbaiki di backend
+      const statsRes = await apiHelper.get("/invoices/stats");
+      setStats(statsRes.data.data); // Atur stats dari API
     } catch (error) {
-       toast.error("Failed to load dashboard stats");
+      toast.error("Failed to load dashboard stats");
+      // Jika gagal, 'stats' akan tetap 0 (dari nilai default)
+    } finally {
+      setStatsLoading(false);
     }
+  }, []);
+
+  // --- useCallback untuk fetch data invoice terbaru ---
+  const fetchRecentInvoices = useCallback(async () => {
+    // Kita hanya butuh 5 data terbaru untuk daftar "Recent Invoices"
+    await getAll({ page: 1, limit: 5 });
   }, [getAll]);
 
-
-  // --- useEffect terpisah untuk chart ---
+  // --- useCallback terpisah untuk chart ---
   const fetchChartData = useCallback(async () => {
     setChartLoading(true);
     try {
-      // 2. Fetch data chart (panggilan API kustom)
-      const res = await apiHelper.get<{ data: ChartDataPoint[] }>("/invoices/stats/chart");
-      
+      // Panggil endpoint /stats/chart yang sudah kita perbaiki
+      const res = await apiHelper.get<{ data: ChartDataPoint[] }>(
+        "/invoices/stats/chart"
+      );
+
       // Format 'YYYY-MM' menjadi 'Jan'
-      const formattedData = res.data.data.map(item => ({
+      const formattedData = res.data.data.map((item) => ({
         ...item,
-        month: new Date(item.month + '-02').toLocaleString('default', { month: 'short' })
+        month: new Date(item.month + "-02").toLocaleString("default", {
+          month: "short",
+        }),
       }));
-      
+
       setChartData(formattedData);
     } catch (error) {
       toast.error("Failed to load chart data");
@@ -71,15 +72,17 @@ export function useDashboard() {
     }
   }, []);
 
+  // Jalankan semua fetch saat komponen dimuat
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardStats();
+    fetchRecentInvoices();
     fetchChartData();
-  }, [fetchDashboardData, fetchChartData]);
+  }, [fetchDashboardStats, fetchRecentInvoices, fetchChartData]);
 
-  return { 
-    stats, 
-    recentInvoices, 
+  return {
+    stats,
+    recentInvoices,
     chartData, // Kembalikan data chart
-    loading: statsLoading || chartLoading // Gabungkan state loading
+    loading: statsLoading || chartLoading || invoicesLoading, // Gabungkan semua state loading
   };
 }

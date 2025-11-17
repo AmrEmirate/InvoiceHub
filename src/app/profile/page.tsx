@@ -96,7 +96,7 @@ export default function ProfilePage() {
 
     try {
       const res = await apiHelper.post<{ message: string; data: { url: string } }>(
-        "/upload", // Endpoint upload backend Anda
+        "/uploads", // Endpoint upload backend Anda
         formData,
         {
           headers: {
