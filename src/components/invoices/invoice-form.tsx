@@ -7,109 +7,167 @@ import { useApi } from "@/hooks/use-api";
 import { Client, Product, InvoiceStatus } from "@/lib/types";
 import { toast } from "sonner";
 
+// --- 1. IMPORT BARU ---
+import { useForm, useFieldArray, useWatch, Control } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+// --- 2. BUAT SKEMA VALIDASI ---
+
+// Skema untuk satu item
+const invoiceItemSchema = z.object({
+  productId: z.string().optional(),
+  description: z.string().min(1, "Description is required"),
+  quantity: z.preprocess(
+    (val) => parseFloat(val as string),
+    z.number().min(1, "Qty must be at least 1")
+  ),
+  price: z.preprocess(
+    (val) => parseFloat(val as string),
+    z.number().min(0, "Price cannot be negative")
+  ),
+});
+
+// Skema untuk seluruh form
+const invoiceSchema = z.object({
+  clientId: z.string().min(1, "Client is required"),
+  invoiceNumber: z.string().min(1, "Invoice number is required"),
+  dueDate: z.string().min(1, "Due date is required"),
+  status: z.nativeEnum(InvoiceStatus),
+  notes: z.string().optional(),
+  isRecurring: z.boolean(),
+  recurrenceInterval: z.string(),
+  items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
+});
+
+// Tipe data form
+type InvoiceFormData = z.infer<typeof invoiceSchema>;
+
+// Nilai default untuk satu item
+const defaultItem = { productId: "", description: "", quantity: 1, price: 0 };
+
+// --- 3. KOMPONEN KALKULATOR TOTAL ---
+// Komponen kecil untuk menghitung total secara reaktif
+function TotalCalculator({ control }: { control: Control<InvoiceFormData> }) {
+  // useWatch akan memantau field 'items' dan memicu re-render saat berubah
+  const items = useWatch({
+    control,
+    name: "items",
+  });
+
+  const total = items.reduce(
+    (sum, item) => sum + (item.quantity || 0) * (item.price || 0),
+    0
+  );
+
+  return (
+    <div className="flex justify-between text-lg font-bold text-foreground">
+      <span>Grand Total</span>
+      <span>${total.toFixed(2)}</span>
+    </div>
+  );
+}
+
+// Komponen untuk menghitung total per baris
+function LineTotal({
+  control,
+  index,
+}: {
+  control: Control<InvoiceFormData>;
+  index: number;
+}) {
+  const item = useWatch({
+    control,
+    name: `items.${index}`,
+  });
+  const total = (item.quantity || 0) * (item.price || 0);
+  return <>${total.toFixed(2)}</>;
+}
+
+// --- KOMPONEN FORM UTAMA ---
 export default function InvoiceForm() {
   const router = useRouter();
 
   // 1. Fetch Data Pendukung (Clients & Products)
   const { data: clients, getAll: getClients } = useApi<Client>("clients");
   const { data: products, getAll: getProducts } = useApi<Product>("products");
-  const { create: createInvoice, loading } = useApi("invoices");
+  const { create: createInvoice, loading } = useApi<any, InvoiceFormData>(
+    "invoices"
+  ); // Tipe data payload disesuaikan
 
   useEffect(() => {
     getClients();
     getProducts();
   }, [getClients, getProducts]);
 
-  // 2. State Form Utama
-  const [formData, setFormData] = useState({
-    clientId: "",
-    invoiceNumber: `INV-${new Date().getFullYear()}-${Math.floor(
-      Math.random() * 1000
-    )
-      .toString()
-      .padStart(3, "0")}`,
-    dueDate: "",
-    status: InvoiceStatus.DRAFT,
-    notes: "",
-    isRecurring: false,
-    recurrenceInterval: "monthly",
+  // --- 4. INISIALISASI REACT-HOOK-FORM ---
+  const {
+    register,
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<InvoiceFormData>({
+    resolver: zodResolver(invoiceSchema),
+    defaultValues: {
+      clientId: "",
+      invoiceNumber: `INV-${new Date().getFullYear()}-${Math.floor(
+        Math.random() * 1000
+      )
+        .toString()
+        .padStart(3, "0")}`,
+      dueDate: "",
+      status: InvoiceStatus.DRAFT,
+      notes: "",
+      isRecurring: false,
+      recurrenceInterval: "monthly",
+      items: [defaultItem], // Mulai dengan satu item
+    },
   });
 
-  // 3. State Items (Array Dinamis)
-  const [items, setItems] = useState([
-    { productId: "", description: "", quantity: 1, price: 0 },
-  ]);
+  // --- 5. INISIALISASI useFieldArray ---
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "items",
+  });
 
-  // --- Handlers Form Utama ---
-  const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
-    const value =
-      e.target.type === "checkbox"
-        ? (e.target as HTMLInputElement).checked
-        : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
-  };
+  // Pantau field 'isRecurring' untuk conditional rendering
+  const isRecurring = watch("isRecurring");
 
-  // --- Handlers Item ---
-  const handleItemChange = (index: number, field: string, value: any) => {
-    const newItems = [...items];
-    const item = { ...newItems[index], [field]: value };
-
-    // Logika Auto-fill Produk
-    if (field === "productId") {
-      const selectedProduct = products.find((p) => p.id === value);
-      if (selectedProduct) {
-        item.description = selectedProduct.name;
-        item.price = Number(selectedProduct.price);
-      }
+  // --- 6. HANDLER BARU ---
+  const handleProductSelect = (index: number, productId: string) => {
+    const selectedProduct = products.find((p) => p.id === productId);
+    if (selectedProduct) {
+      // Gunakan setValue untuk mengisi field lain secara otomatis
+      setValue(`items.${index}.description`, selectedProduct.name);
+      setValue(`items.${index}.price`, Number(selectedProduct.price));
     }
-
-    newItems[index] = item;
-    setItems(newItems);
   };
 
   const addItem = () => {
-    setItems([
-      ...items,
-      { productId: "", description: "", quantity: 1, price: 0 },
-    ]);
+    append(defaultItem);
   };
 
   const removeItem = (index: number) => {
-    if (items.length > 1) {
-      setItems(items.filter((_, i) => i !== index));
+    if (fields.length > 1) {
+      remove(index);
     }
   };
 
-  // Hitung Total
-  const calculateTotal = () => {
-    return items.reduce((sum, item) => sum + item.quantity * item.price, 0);
-  };
-
-  // --- Submit ---
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.clientId || !formData.dueDate) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
-    const cleanItems = items.map((item) => ({
-      ...item,
-      productId: item.productId || undefined,
-    }));
-
-    const payload = {
-      ...formData,
-      items: cleanItems,
+  // --- 7. SUBMIT HANDLER BARU ---
+  const onSubmit = async (data: InvoiceFormData) => {
+    // Membersihkan data (mengganti productId string kosong dengan undefined)
+    const cleanData = {
+      ...data,
+      items: data.items.map((item) => ({
+        ...item,
+        productId: item.productId || undefined,
+      })),
     };
 
     try {
-      await createInvoice(payload);
+      await createInvoice(cleanData); // Kirim data yang sudah tervalidasi
       toast.success("Invoice created successfully!");
       router.push("/invoices");
     } catch (error) {
@@ -118,7 +176,8 @@ export default function InvoiceForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    // --- 8. HUBUNGKAN handleSubmit ---
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       {/* Informasi Dasar */}
       <div className="card p-6 bg-white shadow-sm rounded-lg border border-neutral-200">
         <h3 className="text-lg font-bold mb-4 text-foreground">
@@ -131,11 +190,8 @@ export default function InvoiceForm() {
             </label>
             <select
               id="clientId"
-              name="clientId"
-              value={formData.clientId}
-              onChange={handleInputChange}
-              className="input-field"
-              required
+              {...register("clientId")} // Hubungkan
+              className={`input-field ${errors.clientId ? 'border-red-500' : ''}`}
               title="Select Client"
             >
               <option value="">Select Client</option>
@@ -145,6 +201,9 @@ export default function InvoiceForm() {
                 </option>
               ))}
             </select>
+            {errors.clientId && (
+              <p className="text-danger text-sm mt-1">{errors.clientId.message}</p>
+            )}
           </div>
 
           <div>
@@ -154,14 +213,14 @@ export default function InvoiceForm() {
             <input
               id="invoiceNumber"
               type="text"
-              name="invoiceNumber"
-              value={formData.invoiceNumber}
-              onChange={handleInputChange}
-              className="input-field"
+              {...register("invoiceNumber")} // Hubungkan
+              className={`input-field ${errors.invoiceNumber ? 'border-red-500' : ''}`}
               placeholder="INV-001"
-              required
               title="Invoice Number"
             />
+             {errors.invoiceNumber && (
+              <p className="text-danger text-sm mt-1">{errors.invoiceNumber.message}</p>
+            )}
           </div>
 
           <div>
@@ -171,13 +230,13 @@ export default function InvoiceForm() {
             <input
               id="dueDate"
               type="date"
-              name="dueDate"
-              value={formData.dueDate}
-              onChange={handleInputChange}
-              className="input-field"
-              required
+              {...register("dueDate")} // Hubungkan
+              className={`input-field ${errors.dueDate ? 'border-red-500' : ''}`}
               title="Due Date"
             />
+            {errors.dueDate && (
+              <p className="text-danger text-sm mt-1">{errors.dueDate.message}</p>
+            )}
           </div>
         </div>
 
@@ -188,9 +247,7 @@ export default function InvoiceForm() {
             </label>
             <select
               id="status"
-              name="status"
-              value={formData.status}
-              onChange={handleInputChange}
+              {...register("status")} // Hubungkan
               className="input-field"
               title="Invoice Status"
             >
@@ -210,9 +267,7 @@ export default function InvoiceForm() {
               <input
                 id="isRecurring"
                 type="checkbox"
-                name="isRecurring"
-                checked={formData.isRecurring}
-                onChange={handleInputChange}
+                {...register("isRecurring")} // Hubungkan
                 className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                 title="Recurring Invoice Checkbox"
               />
@@ -222,16 +277,14 @@ export default function InvoiceForm() {
             </label>
           </div>
 
-          {formData.isRecurring && (
+          {isRecurring && ( // Tampilkan kondisional
             <div>
               <label htmlFor="recurrenceInterval" className="label-text">
                 Interval
               </label>
               <select
                 id="recurrenceInterval"
-                name="recurrenceInterval"
-                value={formData.recurrenceInterval}
-                onChange={handleInputChange}
+                {...register("recurrenceInterval")} // Hubungkan
                 className="input-field"
                 title="Recurrence Interval"
               >
@@ -247,30 +300,38 @@ export default function InvoiceForm() {
       {/* Item Invoice */}
       <div className="card p-6 bg-white shadow-sm rounded-lg border border-neutral-200">
         <h3 className="text-lg font-bold mb-4 text-foreground">Items</h3>
+        
+        {/* Tampilkan error level array (jika tidak ada item) */}
+        {errors.items?.root && (
+          <p className="text-danger text-sm mb-4 -mt-2">{errors.items.root.message}</p>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-neutral-50 border-b border-neutral-200 text-left text-sm font-medium text-neutral-600">
               <tr>
                 <th className="p-3 w-1/4">Product (Auto-fill)</th>
                 <th className="p-3 w-1/3">Description *</th>
-                <th className="p-3 w-24">Qty</th>
-                <th className="p-3 w-32">Price</th>
+                <th className="p-3 w-24">Qty *</th>
+                <th className="p-3 w-32">Price *</th>
                 <th className="p-3 w-32">Total</th>
                 <th className="p-3 w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">
-              {items.map((item, index) => (
-                <tr key={index}>
-                  <td className="p-3">
+              {/* --- 9. LOOP MENGGUNAKAN 'fields' --- */}
+              {fields.map((field, index) => (
+                <tr key={field.id}>
+                  <td className="p-3 align-top">
                     <select
-                      value={item.productId}
+                      {...register(`items.${index}.productId`)} // Hubungkan
                       onChange={(e) =>
-                        handleItemChange(index, "productId", e.target.value)
+                        handleProductSelect(index, e.target.value)
                       }
                       className="input-field text-sm"
                       aria-label="Select Product"
                       title="Select Product"
+                      defaultValue={field.productId} // Set nilai default
                     >
                       <option value="">Select Product...</option>
                       {products.map((p) => (
@@ -280,61 +341,54 @@ export default function InvoiceForm() {
                       ))}
                     </select>
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 align-top">
                     <input
                       type="text"
-                      value={item.description}
-                      onChange={(e) =>
-                        handleItemChange(index, "description", e.target.value)
-                      }
-                      className="input-field text-sm"
+                      {...register(`items.${index}.description`)} // Hubungkan
+                      className={`input-field text-sm ${errors.items?.[index]?.description ? 'border-red-500' : ''}`}
                       placeholder="Item description"
                       aria-label="Item Description"
                       title="Item Description"
-                      required
                     />
+                    {errors.items?.[index]?.description && (
+                      <p className="text-danger text-xs mt-1">{errors.items[index]?.description?.message}</p>
+                    )}
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 align-top">
                     <input
                       type="number"
                       min="1"
-                      value={item.quantity}
-                      onChange={(e) =>
-                        handleItemChange(
-                          index,
-                          "quantity",
-                          parseInt(e.target.value) || 0
-                        )
-                      }
-                      className="input-field text-sm"
+                      {...register(`items.${index}.quantity`)} // Hubungkan
+                      className={`input-field text-sm ${errors.items?.[index]?.quantity ? 'border-red-500' : ''}`}
                       placeholder="1"
                       aria-label="Quantity"
                       title="Quantity"
                     />
+                     {errors.items?.[index]?.quantity && (
+                      <p className="text-danger text-xs mt-1">{errors.items[index]?.quantity?.message}</p>
+                    )}
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 align-top">
                     <input
                       type="number"
                       min="0"
-                      value={item.price}
-                      onChange={(e) =>
-                        handleItemChange(
-                          index,
-                          "price",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                      className="input-field text-sm"
+                      step="0.01"
+                      {...register(`items.${index}.price`)} // Hubungkan
+                      className={`input-field text-sm ${errors.items?.[index]?.price ? 'border-red-500' : ''}`}
                       placeholder="0.00"
                       aria-label="Price"
                       title="Price"
                     />
+                     {errors.items?.[index]?.price && (
+                      <p className="text-danger text-xs mt-1">{errors.items[index]?.price?.message}</p>
+                    )}
                   </td>
-                  <td className="p-3 font-medium text-foreground">
-                    ${(item.quantity * item.price).toFixed(2)}
+                  <td className="p-3 align-top font-medium text-foreground">
+                    {/* Tampilkan total baris secara reaktif */}
+                    <LineTotal control={control} index={index} />
                   </td>
-                  <td className="p-3 text-center">
-                    {items.length > 1 && (
+                  <td className="p-3 align-top text-center">
+                    {fields.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeItem(index)}
@@ -365,10 +419,8 @@ export default function InvoiceForm() {
         {/* Total Section */}
         <div className="mt-8 border-t pt-4 flex justify-end">
           <div className="w-64 space-y-2">
-            <div className="flex justify-between text-lg font-bold text-foreground">
-              <span>Grand Total</span>
-              <span>${calculateTotal().toFixed(2)}</span>
-            </div>
+            {/* --- 10. GUNAKAN KOMPONEN KALKULATOR TOTAL --- */}
+            <TotalCalculator control={control} />
           </div>
         </div>
       </div>
@@ -380,9 +432,7 @@ export default function InvoiceForm() {
         </label>
         <textarea
           id="notes"
-          name="notes"
-          value={formData.notes}
-          onChange={handleInputChange}
+          {...register("notes")} // Hubungkan
           className="input-field w-full h-24 resize-none"
           placeholder="Additional notes for the client..."
           title="Notes"

@@ -6,13 +6,11 @@ import { Suspense, useState, useEffect } from "react";
 import DashboardLayout from "@/components/layouts/dashboard-layout";
 import { useApi } from "@/hooks/use-api";
 import { Client } from "@/lib/types";
-
-// --- 1. IMPORT VALIDASI ---
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-// --- 2. BUAT SKEMA VALIDASI ---
+// Skema tidak berubah
 const clientSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   email: z.string().email("Must be a valid email"),
@@ -20,30 +18,38 @@ const clientSchema = z.object({
   address: z.string().optional(),
   paymentPreferences: z.string().optional(),
 });
-
 type ClientFormData = z.infer<typeof clientSchema>;
+
+// --- Pengaturan Paginasi ---
+const CLIENTS_PER_PAGE = 6; // Kita akan tampilkan 6 klien per halaman
 
 function ClientsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // API Hook
+  // --- 1. AMBIL `pagination` DARI useApi ---
   const {
     data: clients,
     loading,
+    pagination, // Ambil metadata paginasi
     getAll,
     create,
     update,
     remove,
   } = useApi<Client, ClientFormData>("clients");
 
-  // State UI
+  // --- 2. STATE DINAMIS DARI URL ---
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [currentPage, setCurrentPage] = useState(
+    Number(searchParams.get("page")) || 1
+  );
+
+  // State UI (tidak berubah)
   const [showAddForm, setShowAddForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // --- 3. INISIALISASI REACT-HOOK-FORM ---
+  // Form hook (tidak berubah)
   const {
     register,
     handleSubmit,
@@ -61,39 +67,62 @@ function ClientsContent() {
     },
   });
 
-  // Fetch Data
+  // --- 3. PERBARUI useEffect UNTUK MENGIRIM PARAMETER PAGINASI ---
   useEffect(() => {
-    getAll({ search: searchTerm, page: 1, limit: 100 });
-  }, [getAll, searchTerm]);
-
-  // --- Handlers ---
-
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
+    // Ambil data berdasarkan state saat ini
+    getAll({ 
+      search: searchTerm, 
+      page: currentPage, 
+      limit: CLIENTS_PER_PAGE 
+    });
+  }, [getAll, searchTerm, currentPage]);
+  
+  // --- 4. FUNGSI BARU UNTUK MENGELOLA URL ---
+  const updateQueryParams = (page: number, search: string) => {
     const params = new URLSearchParams(searchParams);
-    if (value) params.set("search", value);
-    else params.delete("search");
+    // Set halaman
+    if (page > 1) {
+      params.set("page", page.toString());
+    } else {
+      params.delete("page"); // Hapus jika halaman 1
+    }
+    // Set pencarian
+    if (search) {
+      params.set("search", search);
+    } else {
+      params.delete("search");
+    }
+    // Dorong ke router
     router.push(`?${params.toString()}`);
   };
 
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Selalu reset ke halaman 1 saat mencari
+    updateQueryParams(1, value);
+  };
+  
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    updateQueryParams(newPage, searchTerm);
+  }
+
+  // Handler Form (tidak berubah)
   const handleCloseForm = () => {
     setShowAddForm(false);
     reset({ name: "", email: "", phone: "", address: "", paymentPreferences: "" });
     setIsEditing(false);
     setSelectedId(null);
   };
-  
   const handleOpenAdd = () => {
     reset({ name: "", email: "", phone: "", address: "", paymentPreferences: "" });
     setIsEditing(false);
     setSelectedId(null);
     setShowAddForm(true);
   };
-
   const handleOpenEdit = (client: Client) => {
     setIsEditing(true);
     setSelectedId(client.id);
-    // Isi form dengan data yang ada
     setValue("name", client.name);
     setValue("email", client.email);
     setValue("phone", client.phone || "");
@@ -101,8 +130,7 @@ function ClientsContent() {
     setValue("paymentPreferences", client.paymentPreferences || "");
     setShowAddForm(true);
   };
-
-  // --- 4. PERBARUI SUBMIT HANDLER ---
+  
   const onSubmit = async (data: ClientFormData) => {
     try {
       if (isEditing && selectedId) {
@@ -111,6 +139,8 @@ function ClientsContent() {
         await create(data);
       }
       handleCloseForm();
+      // Panggil ulang getAll untuk data terbaru (mungkin di halaman 1)
+      handlePageChange(1); 
     } catch (error) {
       // Error handled by hook
     }
@@ -119,6 +149,12 @@ function ClientsContent() {
   const handleDeleteClient = async (id: string) => {
     if (confirm("Are you sure you want to delete this client?")) {
       await remove(id);
+      // Panggil ulang getAll untuk halaman saat ini
+      getAll({ 
+        search: searchTerm, 
+        page: currentPage, 
+        limit: CLIENTS_PER_PAGE 
+      });
     }
   };
 
@@ -138,13 +174,12 @@ function ClientsContent() {
           </button>
         </div>
 
-        {/* Add/Edit Client Form */}
+        {/* Form Add/Edit (tidak berubah) */}
         {showAddForm && (
           <div className="card p-6 bg-blue-50 border-blue-200">
             <h2 className="text-xl font-bold text-foreground mb-4">
               {isEditing ? "Edit Client" : "Add New Client"}
             </h2>
-            {/* --- 5. HUBUNGKAN FORM --- */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -206,7 +241,7 @@ function ClientsContent() {
           </div>
         )}
 
-        {/* Search */}
+        {/* Search (tidak berubah) */}
         <div className="card p-6">
           <input
             type="text"
@@ -217,7 +252,7 @@ function ClientsContent() {
           />
         </div>
 
-        {/* Clients List (Desain Kartu Asli) */}
+        {/* Clients List (tidak berubah) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {loading && clients.length === 0 ? (
             <div className="col-span-full text-center py-12">
@@ -267,6 +302,29 @@ function ClientsContent() {
             </div>
           )}
         </div>
+
+        {/* --- 5. TAMBAHKAN UI PAGINASI --- */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="flex justify-between items-center mt-6">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1 || loading}
+              className="btn-secondary disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-neutral-600">
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === pagination.totalPages || loading}
+              className="btn-secondary disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

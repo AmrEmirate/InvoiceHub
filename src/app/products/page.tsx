@@ -4,99 +4,203 @@ import type React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 import DashboardLayout from "@/components/layouts/dashboard-layout";
-import { useApi } from "@/hooks/use-api";
+import { useApi } from "@/hooks/use-api"; // Hook useApi kita yang sudah diperbarui
 import { Product, Category } from "@/lib/types";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+// Skema (tidak berubah)
+const productSchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  sku: z.string().min(1, "SKU is required"),
+  price: z.preprocess(
+    (a) => parseFloat(a as string),
+    z.number().min(0.01, "Price must be greater than 0")
+  ),
+  categoryId: z.string().min(1, "Category is required"),
+  description: z.string().optional(),
+});
+type ProductFormData = z.infer<typeof productSchema>;
+
+// --- 1. PENGATURAN PAGINASI ---
+const PRODUCTS_PER_PAGE = 10;
 
 function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // 1. Fetch Data dari API
+  // --- 2. AMBIL `pagination` DARI useApi ---
   const {
     data: products,
     loading: loadingProducts,
+    pagination, // Ambil metadata paginasi
     getAll: getProducts,
     create: createProduct,
+    update: updateProduct,
     remove: deleteProduct,
-  } = useApi<Product>("products");
+  } = useApi<Product, ProductFormData>("products");
 
-  const { data: categories, getAll: getCategories } = useApi<Category>("categories");
+  const { data: categories, getAll: getCategories } = useApi<Category>(
+    "categories"
+  );
 
-  // State Filter & Form
+  // --- 3. STATE DINAMIS DARI URL ---
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
-  const [categoryFilter, setCategoryFilter] = useState(searchParams.get("categoryId") || "all");
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState(
+    searchParams.get("categoryId") || "all"
+  );
+  const [currentPage, setCurrentPage] = useState(
+    Number(searchParams.get("page")) || 1
+  );
   
-  const [newProduct, setNewProduct] = useState({
-    name: "",
-    description: "",
-    price: 0,
-    categoryId: "", // ID Kategori, bukan nama
-    sku: "",
+  // State UI (tidak berubah)
+  const [showForm, setShowForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Form hook (tidak berubah)
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<ProductFormData>({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: "", description: "", price: 0, categoryId: "", sku: "",
+    },
   });
 
-  // 2. Fetch Kategori & Produk Awal
+  // Fetch Kategori
   useEffect(() => {
-    getCategories();
+    getCategories(); // Tidak perlu paginasi untuk dropdown
   }, [getCategories]);
 
+  // --- 4. PERBARUI useEffect UNTUK PRODUK ---
   useEffect(() => {
-    const params: any = {};
+    const params: any = {
+      page: currentPage,
+      limit: PRODUCTS_PER_PAGE,
+    };
     if (searchTerm) params.search = searchTerm;
     if (categoryFilter !== "all") params.categoryId = categoryFilter;
+    
     getProducts(params);
-  }, [getProducts, searchTerm, categoryFilter]);
+  }, [getProducts, searchTerm, categoryFilter, currentPage]);
 
-  // --- Handler ---
+  // --- 5. FUNGSI BARU UNTUK MENGELOLA URL ---
+  const updateQueryParams = (params: { page?: number; search?: string; categoryId?: string }) => {
+    const newParams = new URLSearchParams(searchParams);
 
+    // Set Halaman
+    if (params.page !== undefined) {
+      if (params.page > 1) newParams.set("page", params.page.toString());
+      else newParams.delete("page");
+    }
+    
+    // Set Pencarian
+    if (params.search !== undefined) {
+      if (params.search) newParams.set("search", params.search);
+      else newParams.delete("search");
+    }
+    
+    // Set Kategori
+    if (params.categoryId !== undefined) {
+      if (params.categoryId !== "all") newParams.set("categoryId", params.categoryId);
+      else newParams.delete("categoryId");
+    }
+
+    router.push(`?${newParams.toString()}`);
+  };
+
+  // --- 6. PERBARUI HANDLER ---
   const handleSearch = (value: string) => {
     setSearchTerm(value);
-    const params = new URLSearchParams(searchParams);
-    if (value) params.set("search", value);
-    else params.delete("search");
-    if (categoryFilter !== "all") params.set("categoryId", categoryFilter);
-    router.push(`?${params.toString()}`);
+    setCurrentPage(1); // Reset ke halaman 1
+    updateQueryParams({ page: 1, search: value });
   };
 
   const handleCategoryFilter = (value: string) => {
     setCategoryFilter(value);
-    const params = new URLSearchParams(searchParams);
-    if (value !== "all") params.set("categoryId", value);
-    else params.delete("categoryId");
-    if (searchTerm) params.set("search", searchTerm);
-    router.push(`?${params.toString()}`);
+    setCurrentPage(1); // Reset ke halaman 1
+    updateQueryParams({ page: 1, categoryId: value });
   };
 
   const handleReset = () => {
     setSearchTerm("");
     setCategoryFilter("all");
-    router.push("/products");
+    setCurrentPage(1);
+    router.push("/products"); // Hapus semua params
   };
 
-  const handleAddProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newProduct.name && newProduct.sku && newProduct.price > 0 && newProduct.categoryId) {
-      try {
-        await createProduct(newProduct);
-        setNewProduct({ name: "", description: "", price: 0, categoryId: "", sku: "" });
-        setShowAddForm(false);
-      } catch (error) {
-        // Error handled by hook
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    updateQueryParams({ page: newPage });
+  };
+
+  // Handler Form (tidak berubah)
+  const handleCloseForm = () => {
+    setShowForm(false);
+    reset({ name: "", description: "", price: 0, categoryId: "", sku: "" });
+    setIsEditing(false);
+    setSelectedId(null);
+  };
+  const handleOpenAdd = () => {
+    reset({ name: "", description: "", price: 0, categoryId: "", sku: "" });
+    setIsEditing(false);
+    setSelectedId(null);
+    setShowForm(true);
+  };
+  const handleOpenEdit = (product: Product) => {
+    setIsEditing(true);
+    setSelectedId(product.id);
+    setValue("name", product.name);
+    setValue("sku", product.sku);
+    setValue("price", Number(product.price));
+    setValue("categoryId", product.categoryId);
+    setValue("description", product.description || "");
+    setShowForm(true);
+  };
+  
+  const onSubmit = async (data: ProductFormData) => {
+    try {
+      if (isEditing && selectedId) {
+        await updateProduct(selectedId, data);
+      } else {
+        await createProduct(data);
       }
-    } else {
-      alert("Please fill in all fields correctly.");
+      handleCloseForm();
+      // Panggil ulang data di halaman saat ini
+      getProducts({ 
+        page: currentPage, 
+        limit: PRODUCTS_PER_PAGE,
+        search: searchTerm,
+        categoryId: categoryFilter
+      });
+    } catch (error) {
+      // Error handled by hook
     }
   };
 
   const handleDeleteProduct = async (id: string) => {
     if (confirm("Are you sure you want to delete this product?")) {
       await deleteProduct(id);
+      // Panggil ulang data di halaman saat ini
+      getProducts({ 
+        page: currentPage, 
+        limit: PRODUCTS_PER_PAGE,
+        search: searchTerm,
+        categoryId: categoryFilter
+      });
     }
   };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Header (tidak berubah) */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
@@ -107,43 +211,44 @@ function ProductsContent() {
             </p>
           </div>
           <button
-            onClick={() => setShowAddForm(!showAddForm)}
+            onClick={showForm ? handleCloseForm : handleOpenAdd}
             className="btn-primary"
           >
-            {showAddForm ? "Cancel" : "+ Add Product"}
+            {showForm ? "Cancel" : "+ Add Product"}
           </button>
         </div>
 
-        {/* Add Product Form */}
-        {showAddForm && (
+        {/* Form Add/Edit (tidak berubah) */}
+        {showForm && (
           <div className="card p-6 bg-green-50 border-green-200">
-            <form onSubmit={handleAddProduct} className="space-y-4">
+             <h2 className="text-xl font-bold text-foreground mb-4">
+              {isEditing ? "Edit Product" : "Add New Product"}
+            </h2>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="label-text">Name *</label>
                   <input
                     type="text"
-                    value={newProduct.name}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, name: e.target.value })
-                    }
-                    className="input-field"
+                    {...register("name")}
+                    className={`input-field ${errors.name ? 'border-red-500' : ''}`}
                     placeholder="Product name"
-                    required
                   />
+                  {errors.name && (
+                    <p className="text-danger text-sm mt-1">{errors.name.message}</p>
+                  )}
                 </div>
                 <div>
                   <label className="label-text">SKU *</label>
                   <input
                     type="text"
-                    value={newProduct.sku}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, sku: e.target.value })
-                    }
-                    className="input-field"
+                    {...register("sku")}
+                    className={`input-field ${errors.sku ? 'border-red-500' : ''}`}
                     placeholder="Product SKU"
-                    required
                   />
+                   {errors.sku && (
+                    <p className="text-danger text-sm mt-1">{errors.sku.message}</p>
+                  )}
                 </div>
                 <div>
                   <label className="label-text">Price *</label>
@@ -151,31 +256,20 @@ function ProductsContent() {
                     type="number"
                     min="0"
                     step="0.01"
-                    value={newProduct.price}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        price: Number.parseFloat(e.target.value),
-                      })
-                    }
-                    className="input-field"
+                    {...register("price")}
+                    className={`input-field ${errors.price ? 'border-red-500' : ''}`}
                     placeholder="0.00"
-                    required
                   />
+                   {errors.price && (
+                    <p className="text-danger text-sm mt-1">{errors.price.message}</p>
+                  )}
                 </div>
                 <div>
                   <label className="label-text">Category *</label>
                   <select
-                    value={newProduct.categoryId}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        categoryId: e.target.value,
-                      })
-                    }
+                    {...register("categoryId")}
                     title="Select product category"
-                    className="input-field"
-                    required
+                    className={`input-field ${errors.categoryId ? 'border-red-500' : ''}`}
                   >
                     <option value="">Select Category</option>
                     {categories.map((cat) => (
@@ -184,22 +278,20 @@ function ProductsContent() {
                       </option>
                     ))}
                   </select>
-                  {categories.length === 0 && (
-                    <p className="text-xs text-red-500 mt-1">
-                      No categories found.
-                    </p>
+                  {errors.categoryId ? (
+                     <p className="text-danger text-sm mt-1">{errors.categoryId.message}</p>
+                  ) : (
+                    categories.length === 0 && (
+                      <p className="text-xs text-red-500 mt-1">
+                        No categories found.
+                      </p>
+                    )
                   )}
                 </div>
                 <div className="md:col-span-2">
                   <label className="label-text">Description</label>
                   <textarea
-                    value={newProduct.description}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        description: e.target.value,
-                      })
-                    }
+                    {...register("description")}
                     className="input-field h-20 resize-none"
                     placeholder="Product description"
                   />
@@ -210,13 +302,13 @@ function ProductsContent() {
                 className="btn-primary"
                 disabled={loadingProducts}
               >
-                {loadingProducts ? "Saving..." : "Save Product"}
+                {loadingProducts ? "Saving..." : isEditing ? "Update Product" : "Save Product"}
               </button>
             </form>
           </div>
         )}
 
-        {/* Filters */}
+        {/* Filters (Input value di-link ke state) */}
         <div className="card p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -260,74 +352,102 @@ function ProductsContent() {
               <p className="text-neutral-600">Loading products...</p>
             </div>
           ) : products.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Name
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      SKU
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Category
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Price
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-200">
-                  {products.map((product) => (
-                    <tr
-                      key={product.id}
-                      className="hover:bg-neutral-50 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium text-foreground">
-                            {product.name}
-                          </p>
-                          <p className="text-xs text-neutral-600">
-                            {product.description || "-"}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-neutral-600">{product.sku}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                          {product.category?.name || "Unknown"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-semibold text-foreground">
-                          ${Number(product.price).toFixed(2)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <button className="text-accent hover:text-accent-dark text-sm font-medium">
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="text-danger hover:text-red-700 text-sm font-medium"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  {/* ... thead (tidak berubah) ... */}
+                   <thead className="bg-neutral-50 border-b border-neutral-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                        Name
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                        SKU
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                        Category
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                        Price
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200">
+                    {products.map((product) => (
+                      <tr
+                        key={product.id}
+                        className="hover:bg-neutral-50 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-medium text-foreground">
+                              {product.name}
+                            </p>
+                            <p className="text-xs text-neutral-600">
+                              {product.description || "-"}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-neutral-600">{product.sku}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                            {product.category?.name || "Unknown"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="font-semibold text-foreground">
+                            ${Number(product.price).toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => handleOpenEdit(product)}
+                              className="text-accent hover:text-accent-dark text-sm font-medium">
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(product.id)}
+                              className="text-danger hover:text-red-700 text-sm font-medium"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* --- 7. TAMBAHKAN UI PAGINASI --- */}
+              {pagination && pagination.totalPages > 1 && (
+                <div className="flex justify-between items-center p-4 border-t">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || loadingProducts}
+                    className="btn-secondary disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-neutral-600">
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === pagination.totalPages || loadingProducts}
+                    className="btn-secondary disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-12">
               <p className="text-neutral-600">

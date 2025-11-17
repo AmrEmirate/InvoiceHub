@@ -1,21 +1,45 @@
 import { useState, useCallback } from "react";
 import apiHelper from "@/lib/apiHelper";
-import { ApiResponse } from "@/lib/types";
+// Impor tipe baru yang kita buat
+import { ApiResponse, PaginatedResponse } from "@/lib/types"; 
 import { toast } from "sonner";
+
+// Definisikan tipe untuk metadata paginasi
+export interface PaginationMeta {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+}
 
 // T = Tipe Data (misal: Client), U = Tipe Input Create/Update
 export function useApi<T, U = Partial<T>>(endpoint: string) {
   const [data, setData] = useState<T[]>([]);
   const [item, setItem] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // --- STATE BARU UNTUK PAGINASI ---
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
 
   // GET ALL
   const getAll = useCallback(async (params?: any) => {
     setLoading(true);
     try {
-      const res = await apiHelper.get<ApiResponse<T[]>>(endpoint, { params });
-      setData(res.data.data);
-      return res.data.data;
+      // --- PERBARUI TIPE RESPON YANG DIHARAPKAN ---
+      // Kita mengharapkan data dibungkus dalam PaginatedResponse
+      const res = await apiHelper.get<ApiResponse<PaginatedResponse<T>>>(endpoint, { params });
+      
+      const responseData = res.data.data;
+
+      // --- ISI KEDUA STATE ---
+      setData(responseData.data); // Ini adalah array-nya
+      setPagination({ // Ini adalah metadata-nya
+        totalItems: responseData.totalItems,
+        totalPages: responseData.totalPages,
+        currentPage: responseData.currentPage,
+      });
+      
+      return responseData; // Kembalikan seluruh objek paginasi
+      
     } catch (error: any) {
       toast.error(`Failed to fetch data from ${endpoint}`);
     } finally {
@@ -23,7 +47,7 @@ export function useApi<T, U = Partial<T>>(endpoint: string) {
     }
   }, [endpoint]);
 
-  // GET ONE
+  // GET ONE (Tidak berubah)
   const getOne = useCallback(async (id: string) => {
     setLoading(true);
     try {
@@ -37,13 +61,15 @@ export function useApi<T, U = Partial<T>>(endpoint: string) {
     }
   }, [endpoint]);
 
-  // CREATE
+  // CREATE (Tidak berubah)
+  // Komponen yang memanggil 'create' bertanggung jawab untuk memuat ulang data (getAll)
   const create = async (payload: U) => {
     setLoading(true);
     try {
       const res = await apiHelper.post<ApiResponse<T>>(endpoint, payload);
       toast.success("Created successfully");
-      // Refresh list locally
+      // Update list (perilaku ini mungkin perlu disesuaikan nanti, 
+      // tapi untuk sekarang kita biarkan)
       setData((prev) => [res.data.data, ...prev]);
       return res.data.data;
     } catch (error: any) {
@@ -55,7 +81,7 @@ export function useApi<T, U = Partial<T>>(endpoint: string) {
     }
   };
 
-  // UPDATE
+  // UPDATE (Tidak berubah)
   const update = async (id: string, payload: U) => {
     setLoading(true);
     try {
@@ -73,7 +99,7 @@ export function useApi<T, U = Partial<T>>(endpoint: string) {
     }
   };
 
-  // DELETE
+  // DELETE (Tidak berubah)
   const remove = async (id: string) => {
     setLoading(true);
     try {
@@ -93,6 +119,7 @@ export function useApi<T, U = Partial<T>>(endpoint: string) {
     data,
     item,
     loading,
+    pagination, // --- KEMBALIKAN STATE PAGINASI ---
     getAll,
     getOne,
     create,

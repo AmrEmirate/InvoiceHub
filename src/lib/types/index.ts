@@ -12,6 +12,7 @@ export interface User {
   taxId?: string;
   bankAccount?: string;
   isVerified: boolean;
+  avatar?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -97,4 +98,19 @@ export interface ApiResponse<T> {
 export interface AuthResponse {
   user: User;
   token: string;
+}
+
+// ... (setelah interface ApiResponse)
+
+// Tipe Paginasi
+export interface PaginatedResponse<T> {
+  data: T[];
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+}
+
+export interface ChartDataPoint {
+  month: string; // "2025-01"
+  revenue: number;
 }

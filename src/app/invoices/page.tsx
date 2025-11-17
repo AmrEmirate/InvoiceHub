@@ -4,70 +4,117 @@ import type React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 import DashboardLayout from "@/components/layouts/dashboard-layout";
-import { useApi } from "@/hooks/use-api";
-import apiHelper from "@/lib/apiHelper"; // Kita butuh ini untuk request khusus (PATCH/POST)
+import { useApi } from "@/hooks/use-api"; // Hook kita yang sudah diperbarui
+import apiHelper from "@/lib/apiHelper";
 import { Invoice, InvoiceStatus } from "@/lib/types";
 import { toast } from "sonner";
+
+// --- 1. PENGATURAN PAGINASI ---
+const INVOICES_PER_PAGE = 10;
 
 function InvoicesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // 1. Fetch Data Invoice
+  // --- 2. AMBIL `pagination` DARI useApi ---
   const {
     data: invoices,
     loading,
+    pagination, // Ambil metadata paginasi
     getAll,
     remove,
   } = useApi<Invoice>("invoices");
 
-  // State Filter
+  // --- 3. STATE DINAMIS DARI URL ---
   const [searchTerm, setSearchTerm] = useState(
     searchParams.get("search") || ""
   );
   const [statusFilter, setStatusFilter] = useState(
     searchParams.get("status") || "all"
   );
+  const [currentPage, setCurrentPage] = useState(
+    Number(searchParams.get("page")) || 1
+  );
+
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
-  // 2. Fetch Data dengan Filter
+  // --- 4. PERBARUI useEffect ---
   useEffect(() => {
-    const params: any = {};
+    const params: any = {
+      page: currentPage,
+      limit: INVOICES_PER_PAGE,
+    };
     if (searchTerm) params.search = searchTerm;
     if (statusFilter !== "all") params.status = statusFilter;
+    
     getAll(params);
-  }, [getAll, searchTerm, statusFilter]);
+  }, [getAll, searchTerm, statusFilter, currentPage]);
 
-  // --- Handlers ---
+  // --- 5. FUNGSI BARU UNTUK MENGELOLA URL ---
+  const updateQueryParams = (params: { page?: number; search?: string; status?: string }) => {
+    const newParams = new URLSearchParams(searchParams);
 
+    // Set Halaman
+    if (params.page !== undefined) {
+      if (params.page > 1) newParams.set("page", params.page.toString());
+      else newParams.delete("page");
+    }
+    
+    // Set Pencarian
+    if (params.search !== undefined) {
+      if (params.search) newParams.set("search", params.search);
+      else newParams.delete("search");
+    }
+    
+    // Set Status
+    if (params.status !== undefined) {
+      if (params.status !== "all") newParams.set("status", params.status);
+      else newParams.delete("status");
+    }
+
+    router.push(`?${newParams.toString()}`);
+  };
+  
+  // --- 6. PERBARUI HANDLER ---
   const handleSearch = (value: string) => {
     setSearchTerm(value);
-    updateQueryParams(value, statusFilter);
+    setCurrentPage(1);
+    updateQueryParams({ page: 1, search: value });
   };
 
   const handleStatusFilter = (value: string) => {
     setStatusFilter(value);
-    updateQueryParams(searchTerm, value);
-  };
-
-  const updateQueryParams = (search: string, status: string) => {
-    const params = new URLSearchParams(searchParams);
-    if (search) params.set("search", search);
-    else params.delete("search");
-    if (status !== "all") params.set("status", status);
-    else params.delete("status");
-    router.push(`?${params.toString()}`);
+    setCurrentPage(1);
+    updateQueryParams({ page: 1, status: value });
   };
 
   const handleReset = () => {
     setSearchTerm("");
     setStatusFilter("all");
-    router.push("/invoices");
+    setCurrentPage(1);
+    router.push("/invoices"); // Hapus semua params
   };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    updateQueryParams({ page: newPage });
+  };
+
+  const refreshCurrentPage = () => {
+    // Fungsi helper untuk memuat ulang data di halaman saat ini setelah ada aksi
+    const params: any = {
+      page: currentPage,
+      limit: INVOICES_PER_PAGE,
+    };
+    if (searchTerm) params.search = searchTerm;
+    if (statusFilter !== "all") params.status = statusFilter;
+    getAll(params);
+  }
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this invoice?")) {
       await remove(id);
+      refreshCurrentPage(); // Muat ulang data
     }
   };
 
@@ -76,7 +123,7 @@ function InvoicesContent() {
     try {
       await apiHelper.patch(`/invoices/${id}/status`, { status: newStatus });
       toast.success(`Invoice marked as ${newStatus}`);
-      getAll(); // Refresh data
+      refreshCurrentPage(); // Muat ulang data
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to update status");
     }
@@ -88,7 +135,7 @@ function InvoicesContent() {
     try {
       await apiHelper.post(`/invoices/${id}/send`, {});
       toast.success("Invoice sent to client via email!");
-      getAll(); // Refresh data (status mungkin berubah jadi SENT)
+      refreshCurrentPage(); // Muat ulang data
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to send email");
     } finally {
@@ -96,7 +143,7 @@ function InvoicesContent() {
     }
   };
 
-  // Helper UI untuk Badge Status
+  // Helper UI untuk Badge Status (tidak berubah)
   const getStatusBadge = (status: InvoiceStatus) => {
     const styles = {
       [InvoiceStatus.DRAFT]: "bg-gray-100 text-gray-700",
@@ -120,7 +167,7 @@ function InvoicesContent() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
+        {/* Header (tidak berubah) */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Invoices</h1>
@@ -134,7 +181,7 @@ function InvoicesContent() {
           </button>
         </div>
 
-        {/* Filters */}
+        {/* Filters (Input value di-link ke state) */}
         <div className="card p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -178,94 +225,120 @@ function InvoicesContent() {
               <p className="text-neutral-600">Loading invoices...</p>
             </div>
           ) : invoices.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Invoice #
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Client
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Date
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Amount
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-200">
-                  {invoices.map((invoice) => (
-                    <tr
-                      key={invoice.id}
-                      className="hover:bg-neutral-50 transition-colors"
-                    >
-                      <td className="px-6 py-4 font-medium">
-                        {invoice.invoiceNumber}
-                      </td>
-                      <td className="px-6 py-4 text-neutral-600">
-                        {invoice.client?.name || "Unknown Client"}
-                      </td>
-                      <td className="px-6 py-4 text-neutral-600">
-                        {new Date(invoice.dueDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 font-semibold">
-                        ${Number(invoice.totalAmount).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        {getStatusBadge(invoice.status)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          {/* Tombol Aksi Dinamis Berdasarkan Status */}
-                          {invoice.status === InvoiceStatus.DRAFT && (
-                            <button
-                              onClick={() => handleSendEmail(invoice.id)}
-                              disabled={sendingEmailId === invoice.id}
-                              className="text-blue-600 hover:text-blue-800 text-sm font-medium disabled:opacity-50"
-                            >
-                              {sendingEmailId === invoice.id
-                                ? "Sending..."
-                                : "Send Email"}
-                            </button>
-                          )}
-
-                          {invoice.status !== InvoiceStatus.PAID &&
-                            invoice.status !== InvoiceStatus.DRAFT && (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  {/* ... thead (tidak berubah) ... */}
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                        Invoice #
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                        Client
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                        Date
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                        Amount
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+                        Status
+                      </th>
+                      <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200">
+                    {invoices.map((invoice) => (
+                      <tr
+                        key={invoice.id}
+                        className="hover:bg-neutral-50 transition-colors"
+                      >
+                        <td className="px-6 py-4 font-medium">
+                          {invoice.invoiceNumber}
+                        </td>
+                        <td className="px-6 py-4 text-neutral-600">
+                          {invoice.client?.name || "Unknown Client"}
+                        </td>
+                        <td className="px-6 py-4 text-neutral-600">
+                          {new Date(invoice.dueDate).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 font-semibold">
+                          ${Number(invoice.totalAmount).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          {getStatusBadge(invoice.status)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            {/* Tombol Aksi (tidak berubah) */}
+                            {invoice.status === InvoiceStatus.DRAFT && (
                               <button
-                                onClick={() =>
-                                  handleStatusUpdate(
-                                    invoice.id,
-                                    InvoiceStatus.PAID
-                                  )
-                                }
-                                className="text-green-600 hover:text-green-800 text-sm font-medium"
+                                onClick={() => handleSendEmail(invoice.id)}
+                                disabled={sendingEmailId === invoice.id}
+                                className="text-blue-600 hover:text-blue-800 text-sm font-medium disabled:opacity-50"
                               >
-                                Mark Paid
+                                {sendingEmailId === invoice.id
+                                  ? "Sending..."
+                                  : "Send Email"}
                               </button>
                             )}
 
-                          <button
-                            onClick={() => handleDelete(invoice.id)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium ml-2"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                            {invoice.status !== InvoiceStatus.PAID &&
+                              invoice.status !== InvoiceStatus.DRAFT && (
+                                <button
+                                  onClick={() =>
+                                    handleStatusUpdate(
+                                      invoice.id,
+                                      InvoiceStatus.PAID
+                                    )
+                                  }
+                                  className="text-green-600 hover:text-green-800 text-sm font-medium"
+                                >
+                                  Mark Paid
+                                </button>
+                              )}
+
+                            <button
+                              onClick={() => handleDelete(invoice.id)}
+                              className="text-red-600 hover:text-red-800 text-sm font-medium ml-2"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* --- 7. TAMBAHKAN UI PAGINASI --- */}
+              {pagination && pagination.totalPages > 1 && (
+                <div className="flex justify-between items-center p-4 border-t">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || loading}
+                    className="btn-secondary disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-neutral-600">
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === pagination.totalPages || loading}
+                    className="btn-secondary disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-12">
               <p className="text-neutral-600">No invoices found.</p>

@@ -1,35 +1,60 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react"; // Tambahkan useRef
 import DashboardLayout from "@/components/layouts/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
 import { User } from "@/lib/types";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import apiHelper from "@/lib/apiHelper"; // Impor apiHelper
+import { toast } from "sonner"; // Impor toast
+
+// Skema Zod
+const profileSchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  email: z.string().email(),
+  company: z.string().min(3, "Company name is required"),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zipCode: z.string().optional(),
+  country: z.string().optional(),
+  taxId: z.string().optional(),
+  bankAccount: z.string().optional(),
+  avatar: z.string().url().optional(), // <-- TAMBAHKAN AVATAR KE SKEMA
+});
+
+type ProfileFormData = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
   const { user, getProfile, updateProfile, loading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
   
-  // Inisialisasi state profile
-  const [profile, setProfile] = useState<Partial<User>>({
-    name: "",
-    email: "",
-    company: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    country: "",
-    taxId: "",
-    bankAccount: "",
+  // State baru untuk proses upload
+  const [saving, setSaving] = useState(false); // Ini sekarang menangani save & upload
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  
+  // Ref untuk input file
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue, // Kita butuh setValue
+    formState: { errors, isDirty },
+  } = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
   });
 
-  // Update form state saat user data dimuat dari hook
+  // useEffect untuk mengisi form
   useEffect(() => {
     if (user) {
-      setProfile({
+      reset({
         name: user.name || "",
         email: user.email || "",
         company: user.company || "",
@@ -41,43 +66,107 @@ export default function ProfilePage() {
         country: user.country || "",
         taxId: user.taxId || "",
         bankAccount: user.bankAccount || "",
+        avatar: user.avatar || "", // <-- ISI AVATAR
       });
+      // Set juga preview URL jika avatar sudah ada
+      if (user.avatar) {
+        setPreviewUrl(user.avatar);
+      }
     } else {
-      // Jika user belum ada di state, coba fetch ulang
       getProfile();
     }
-  }, [user, getProfile]);
+  }, [user, getProfile, reset]);
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    if (!profile.name?.trim()) newErrors.name = "Name is required";
-    if (!profile.company?.trim()) newErrors.company = "Company name is required";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  // Handler untuk perubahan file
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      // Buat URL preview lokal
+      setPreviewUrl(URL.createObjectURL(file));
+    }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setProfile((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  // Fungsi untuk mengunggah file
+  const handleUpload = async (): Promise<string | null> => {
+    if (!selectedFile) return null;
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    try {
+      const res = await apiHelper.post<{ message: string; data: { url: string } }>(
+        "/upload", // Endpoint upload backend Anda
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      toast.success("Image uploaded!");
+      return res.data.data.url; // Kembalikan URL gambar
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Image upload failed");
+      return null;
+    }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateForm()) {
-      setSaving(true);
-      try {
-        await updateProfile(profile);
-        setIsEditing(false);
-      } catch (error) {
-        // Error sudah ditangani oleh hook (toast)
-      } finally {
-        setSaving(false);
+  // Fungsi Submit Utama
+  const onSubmit = async (data: ProfileFormData) => {
+    setSaving(true);
+    let avatarUrl = data.avatar; // Ambil URL avatar yang ada
+
+    try {
+      // 1. Jika ada file baru, unggah dulu
+      if (selectedFile) {
+        const newAvatarUrl = await handleUpload();
+        if (newAvatarUrl) {
+          avatarUrl = newAvatarUrl; // Gunakan URL baru
+          setValue("avatar", newAvatarUrl); // Set di form agar 'isDirty' false
+        } else {
+          // Gagal upload, hentikan proses
+          setSaving(false);
+          return;
+        }
       }
+
+      // 2. Siapkan data akhir untuk dikirim
+      const finalData = { ...data, avatar: avatarUrl };
+
+      // 3. Update profil dengan data (termasuk URL avatar)
+      await updateProfile(finalData);
+      
+      setIsEditing(false);
+      setSelectedFile(null); // Bersihkan file
+    } catch (error) {
+      // Error toast sudah ditangani oleh hook
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setSelectedFile(null); // Bersihkan file
+    // Reset form ke data user
+    if (user) {
+      reset({
+        name: user.name || "",
+        email: user.email || "",
+        company: user.company || "",
+        phone: user.phone || "",
+        address: user.address || "",
+        city: user.city || "",
+        state: user.state || "",
+        zipCode: user.zipCode || "",
+        country: user.country || "",
+        taxId: user.taxId || "",
+        bankAccount: user.bankAccount || "",
+        avatar: user.avatar || "",
+      });
+      // Reset preview
+      setPreviewUrl(user.avatar || null);
     }
   };
 
@@ -88,6 +177,9 @@ export default function ProfilePage() {
       </div>
     );
   }
+
+  // Cek apakah ada file baru atau data form lain yang berubah
+  const hasChanges = isDirty || selectedFile !== null;
 
   return (
     <DashboardLayout>
@@ -104,8 +196,62 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <form onSubmit={handleSave} className="space-y-6">
-          {/* Business Information */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          
+          {/* --- BAGIAN UI UPLOAD AVATAR --- */}
+          <div className="card p-6">
+            <h2 className="text-lg font-bold text-foreground mb-4">
+              Profile Picture
+            </h2>
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 rounded-full bg-neutral-100 overflow-hidden flex items-center justify-center">
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="Profile Preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-3xl text-neutral-400">
+                    {user?.name?.charAt(0).toUpperCase() || "U"}
+                  </span>
+                )}
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                aria-label="Upload new profile picture"
+                className="hidden" // Sembunyikan input file asli
+                accept="image/png, image/jpeg"
+                disabled={!isEditing}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()} // Picu klik input file
+                disabled={!isEditing || saving}
+                className="btn-secondary disabled:opacity-50"
+              >
+                Change Picture
+              </button>
+              {previewUrl && isEditing && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewUrl(null);
+                    setSelectedFile(null);
+                    setValue("avatar", undefined, { shouldDirty: true }); // Tandai form "dirty"
+                  }}
+                  disabled={saving}
+                  className="text-sm text-red-600 hover:text-red-800"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* Business Information (Form tidak berubah) */}
           <div className="card p-6">
             <h2 className="text-lg font-bold text-foreground mb-4">
               Business Information
@@ -118,18 +264,16 @@ export default function ProfilePage() {
                 <input
                   id="name"
                   type="text"
-                  name="name"
-                  value={profile.name}
-                  onChange={handleInputChange}
+                  {...register("name")}
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
-                  }`}
+                  } ${errors.name ? 'border-red-500' : ''}`}
                   placeholder="Your Full Name"
                   title="Full Name"
                 />
                 {errors.name && (
-                  <p className="text-danger text-sm mt-1">{errors.name}</p>
+                  <p className="text-danger text-sm mt-1">{errors.name.message}</p>
                 )}
               </div>
               <div>
@@ -139,8 +283,7 @@ export default function ProfilePage() {
                 <input
                   id="email"
                   type="email"
-                  name="email"
-                  value={profile.email}
+                  {...register("email")}
                   readOnly
                   className="input-field bg-neutral-100 cursor-not-allowed"
                   placeholder="email@example.com"
@@ -154,18 +297,16 @@ export default function ProfilePage() {
                 <input
                   id="company"
                   type="text"
-                  name="company"
-                  value={profile.company}
-                  onChange={handleInputChange}
+                  {...register("company")}
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
-                  }`}
+                  } ${errors.company ? 'border-red-500' : ''}`}
                   placeholder="Company Name"
                   title="Company Name"
                 />
                 {errors.company && (
-                  <p className="text-danger text-sm mt-1">{errors.company}</p>
+                  <p className="text-danger text-sm mt-1">{errors.company.message}</p>
                 )}
               </div>
               <div>
@@ -175,9 +316,7 @@ export default function ProfilePage() {
                 <input
                   id="phone"
                   type="tel"
-                  name="phone"
-                  value={profile.phone}
-                  onChange={handleInputChange}
+                  {...register("phone")}
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
@@ -189,7 +328,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Address */}
+          {/* Address (Form tidak berubah) */}
           <div className="card p-6">
             <h2 className="text-lg font-bold text-foreground mb-4">Address</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -200,9 +339,7 @@ export default function ProfilePage() {
                 <input
                   id="address"
                   type="text"
-                  name="address"
-                  value={profile.address}
-                  onChange={handleInputChange}
+                  {...register("address")}
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
@@ -218,9 +355,7 @@ export default function ProfilePage() {
                 <input
                   id="city"
                   type="text"
-                  name="city"
-                  value={profile.city}
-                  onChange={handleInputChange}
+                  {...register("city")}
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
@@ -236,9 +371,7 @@ export default function ProfilePage() {
                 <input
                   id="state"
                   type="text"
-                  name="state"
-                  value={profile.state}
-                  onChange={handleInputChange}
+                  {...register("state")}
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
@@ -254,9 +387,7 @@ export default function ProfilePage() {
                 <input
                   id="zipCode"
                   type="text"
-                  name="zipCode"
-                  value={profile.zipCode}
-                  onChange={handleInputChange}
+                  {...register("zipCode")}
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
@@ -272,9 +403,7 @@ export default function ProfilePage() {
                 <input
                   id="country"
                   type="text"
-                  name="country"
-                  value={profile.country}
-                  onChange={handleInputChange}
+                  {...register("country")}
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
@@ -286,7 +415,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Tax & Payment Information */}
+          {/* Tax & Payment (Form tidak berubah) */}
           <div className="card p-6">
             <h2 className="text-lg font-bold text-foreground mb-4">
               Tax & Payment Information
@@ -299,9 +428,7 @@ export default function ProfilePage() {
                 <input
                   id="taxId"
                   type="text"
-                  name="taxId"
-                  value={profile.taxId}
-                  onChange={handleInputChange}
+                  {...register("taxId")}
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
@@ -317,9 +444,7 @@ export default function ProfilePage() {
                 <input
                   id="bankAccount"
                   type="text"
-                  name="bankAccount"
-                  value={profile.bankAccount}
-                  onChange={handleInputChange}
+                  {...register("bankAccount")}
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
@@ -336,14 +461,14 @@ export default function ProfilePage() {
             <div className="flex gap-3">
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || !hasChanges} // Disable jika menyimpan ATAU tidak ada perubahan
                 className="btn-primary flex-1 disabled:opacity-50"
               >
-                {saving ? "Saving..." : "Save Changes"}
+                {saving ? (selectedFile ? "Uploading..." : "Saving...") : "Save Changes"}
               </button>
               <button
                 type="button"
-                onClick={() => setIsEditing(false)}
+                onClick={handleCancel}
                 className="btn-secondary flex-1"
                 disabled={saving}
               >

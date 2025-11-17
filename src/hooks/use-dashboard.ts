@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useApi } from "@/hooks/use-api";
-import { Invoice, InvoiceStatus } from "@/lib/types";
+import { Invoice, InvoiceStatus, ChartDataPoint } from "@/lib/types"; // Impor ChartDataPoint
+import apiHelper from "@/lib/apiHelper"; // Impor apiHelper untuk request kustom
+import { toast } from "sonner"; // Impor toast
 
 export function useDashboard() {
-  const { getAll, loading: apiLoading } = useApi<Invoice>("invoices");
+  const { getAll, loading: statsLoading } = useApi<Invoice>("invoices");
+  
   const [stats, setStats] = useState({
     totalInvoices: 0,
     paidInvoices: 0,
@@ -12,42 +15,71 @@ export function useDashboard() {
     totalRevenue: 0,
   });
   const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // --- STATE BARU UNTUK CHART ---
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [chartLoading, setChartLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const invoices = await getAll();
-        if (invoices) {
-          // Hitung Statistik
-          const total = invoices.length;
-          const paid = invoices.filter((inv) => inv.status === InvoiceStatus.PAID).length;
-          const pending = invoices.filter((inv) => inv.status === InvoiceStatus.PENDING || inv.status === InvoiceStatus.SENT).length;
-          const overdue = invoices.filter((inv) => inv.status === InvoiceStatus.OVERDUE).length;
-          
-          // Hitung Revenue (Hanya dari yang PAID)
-          const revenue = invoices
-            .filter((inv) => inv.status === InvoiceStatus.PAID)
-            .reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
+  // --- Gunakan useCallback untuk fetch ---
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      // 1. Fetch data stats (dari hook useApi)
+      // Kita set limit 5 karena kita hanya butuh 5 data terbaru
+      const invoiceData = await getAll({ page: 1, limit: 5 }); 
+      
+      if (invoiceData) {
+        // Ambil total dari metadata paginasi (ini lebih akurat)
+        const total = invoiceData.totalItems;
+        
+        // Ambil 5 invoice terbaru
+        setRecentInvoices(invoiceData.data);
+        
+        // (CATATAN: Stats ini hanya dari 5 invoice, 
+        // idealnya endpoint /stats BE harus menghitung semua)
+        // Mari kita asumsikan /stats dari BE Anda (seperti di invoice.service.ts)
+        // melakukan perhitungan yang benar. Kita panggil itu secara terpisah.
+        
+        // Mari kita panggil endpoint /stats yang sebenarnya
+        const statsRes = await apiHelper.get("/invoices/stats");
+        setStats(statsRes.data.data.stats);
 
-          setStats({
-            totalInvoices: total,
-            paidInvoices: paid,
-            pendingInvoices: pending,
-            overdueInvoices: overdue,
-            totalRevenue: revenue,
-          });
-
-          // Ambil 5 invoice terbaru
-          setRecentInvoices(invoices.slice(0, 5));
-        }
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchData();
+    } catch (error) {
+       toast.error("Failed to load dashboard stats");
+    }
   }, [getAll]);
 
-  return { stats, recentInvoices, loading: loading || apiLoading };
+
+  // --- useEffect terpisah untuk chart ---
+  const fetchChartData = useCallback(async () => {
+    setChartLoading(true);
+    try {
+      // 2. Fetch data chart (panggilan API kustom)
+      const res = await apiHelper.get<{ data: ChartDataPoint[] }>("/invoices/stats/chart");
+      
+      // Format 'YYYY-MM' menjadi 'Jan'
+      const formattedData = res.data.data.map(item => ({
+        ...item,
+        month: new Date(item.month + '-02').toLocaleString('default', { month: 'short' })
+      }));
+      
+      setChartData(formattedData);
+    } catch (error) {
+      toast.error("Failed to load chart data");
+    } finally {
+      setChartLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+    fetchChartData();
+  }, [fetchDashboardData, fetchChartData]);
+
+  return { 
+    stats, 
+    recentInvoices, 
+    chartData, // Kembalikan data chart
+    loading: statsLoading || chartLoading // Gabungkan state loading
+  };
 }
