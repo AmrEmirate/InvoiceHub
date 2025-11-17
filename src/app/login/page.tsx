@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 
 // Ambil URL API dari environment variable
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8181/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:2020/api";
 
 export default function LoginPage() {
   const { login, loading } = useAuth();
