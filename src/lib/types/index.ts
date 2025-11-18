@@ -42,7 +42,7 @@ export interface Product {
   id: string;
   name: string;
   description?: string;
-  price: number; // BE mengirim Decimal, tapi JSON menjadikannya string/number. Kita treat as number di FE
+  price: number;
   sku: string;
   categoryId: string;
   category?: Category;
@@ -89,7 +89,6 @@ export interface Invoice {
   updatedAt: string;
 }
 
-// Tipe Response Standar dari BE
 export interface ApiResponse<T> {
   message: string;
   data: T;
@@ -100,9 +99,6 @@ export interface AuthResponse {
   token: string;
 }
 
-// ... (setelah interface ApiResponse)
-
-// Tipe Paginasi
 export interface PaginatedResponse<T> {
   data: T[];
   totalItems: number;
@@ -111,6 +107,6 @@ export interface PaginatedResponse<T> {
 }
 
 export interface ChartDataPoint {
-  month: string; // "2025-01"
+  month: string;
   revenue: number;
 }

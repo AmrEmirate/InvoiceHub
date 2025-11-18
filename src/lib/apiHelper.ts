@@ -9,7 +9,6 @@ const apiHelper: AxiosInstance = axios.create({
   },
 });
 
-// Request Interceptor: Sisipkan Token
 apiHelper.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
@@ -20,23 +19,18 @@ apiHelper.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
-// Response Interceptor: Handle Error Global (Opsional)
 apiHelper.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    // Jika token expired (401), bisa redirect ke login di sini
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
-        // Opsional: Hapus token dan redirect
-        // localStorage.removeItem("authToken");
-        // window.location.href = "/login";
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiHelper;

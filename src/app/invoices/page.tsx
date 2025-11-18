@@ -4,41 +4,37 @@ import type React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 import DashboardLayout from "@/components/layouts/dashboard-layout";
-import { useApi } from "@/hooks/use-api"; // Hook kita yang sudah diperbarui
+import { useApi } from "@/hooks/use-api";
 import apiHelper from "@/lib/apiHelper";
 import { Invoice, InvoiceStatus } from "@/lib/types";
 import { toast } from "sonner";
 
-// --- 1. PENGATURAN PAGINASI ---
 const INVOICES_PER_PAGE = 10;
 
 function InvoicesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // --- 2. AMBIL `pagination` DARI useApi ---
   const {
     data: invoices,
     loading,
-    pagination, // Ambil metadata paginasi
+    pagination,
     getAll,
     remove,
   } = useApi<Invoice>("invoices");
 
-  // --- 3. STATE DINAMIS DARI URL ---
   const [searchTerm, setSearchTerm] = useState(
-    searchParams.get("search") || ""
+    searchParams.get("search") || "",
   );
   const [statusFilter, setStatusFilter] = useState(
-    searchParams.get("status") || "all"
+    searchParams.get("status") || "all",
   );
   const [currentPage, setCurrentPage] = useState(
-    Number(searchParams.get("page")) || 1
+    Number(searchParams.get("page")) || 1,
   );
 
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
-  // --- 4. PERBARUI useEffect ---
   useEffect(() => {
     const params: any = {
       page: currentPage,
@@ -46,27 +42,27 @@ function InvoicesContent() {
     };
     if (searchTerm) params.search = searchTerm;
     if (statusFilter !== "all") params.status = statusFilter;
-    
+
     getAll(params);
   }, [getAll, searchTerm, statusFilter, currentPage]);
 
-  // --- 5. FUNGSI BARU UNTUK MENGELOLA URL ---
-  const updateQueryParams = (params: { page?: number; search?: string; status?: string }) => {
+  const updateQueryParams = (params: {
+    page?: number;
+    search?: string;
+    status?: string;
+  }) => {
     const newParams = new URLSearchParams(searchParams);
 
-    // Set Halaman
     if (params.page !== undefined) {
       if (params.page > 1) newParams.set("page", params.page.toString());
       else newParams.delete("page");
     }
-    
-    // Set Pencarian
+
     if (params.search !== undefined) {
       if (params.search) newParams.set("search", params.search);
       else newParams.delete("search");
     }
-    
-    // Set Status
+
     if (params.status !== undefined) {
       if (params.status !== "all") newParams.set("status", params.status);
       else newParams.delete("status");
@@ -74,8 +70,7 @@ function InvoicesContent() {
 
     router.push(`?${newParams.toString()}`);
   };
-  
-  // --- 6. PERBARUI HANDLER ---
+
   const handleSearch = (value: string) => {
     setSearchTerm(value);
     setCurrentPage(1);
@@ -92,7 +87,7 @@ function InvoicesContent() {
     setSearchTerm("");
     setStatusFilter("all");
     setCurrentPage(1);
-    router.push("/invoices"); // Hapus semua params
+    router.push("/invoices");
   };
 
   const handlePageChange = (newPage: number) => {
@@ -101,7 +96,6 @@ function InvoicesContent() {
   };
 
   const refreshCurrentPage = () => {
-    // Fungsi helper untuk memuat ulang data di halaman saat ini setelah ada aksi
     const params: any = {
       page: currentPage,
       limit: INVOICES_PER_PAGE,
@@ -109,33 +103,31 @@ function InvoicesContent() {
     if (searchTerm) params.search = searchTerm;
     if (statusFilter !== "all") params.status = statusFilter;
     getAll(params);
-  }
+  };
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this invoice?")) {
       await remove(id);
-      refreshCurrentPage(); // Muat ulang data
+      refreshCurrentPage();
     }
   };
 
-  // Handler Khusus: Update Status (PATCH)
   const handleStatusUpdate = async (id: string, newStatus: InvoiceStatus) => {
     try {
       await apiHelper.patch(`/invoices/${id}/status`, { status: newStatus });
       toast.success(`Invoice marked as ${newStatus}`);
-      refreshCurrentPage(); // Muat ulang data
+      refreshCurrentPage();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to update status");
     }
   };
 
-  // Handler Khusus: Kirim Email (POST)
   const handleSendEmail = async (id: string) => {
     setSendingEmailId(id);
     try {
       await apiHelper.post(`/invoices/${id}/send`, {});
       toast.success("Invoice sent to client via email!");
-      refreshCurrentPage(); // Muat ulang data
+      refreshCurrentPage();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to send email");
     } finally {
@@ -143,7 +135,6 @@ function InvoicesContent() {
     }
   };
 
-  // Helper UI untuk Badge Status (tidak berubah)
   const getStatusBadge = (status: InvoiceStatus) => {
     const styles = {
       [InvoiceStatus.DRAFT]: "bg-gray-100 text-gray-700",
@@ -167,7 +158,6 @@ function InvoicesContent() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header (tidak berubah) */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Invoices</h1>
@@ -181,7 +171,6 @@ function InvoicesContent() {
           </button>
         </div>
 
-        {/* Filters (Input value di-link ke state) */}
         <div className="card p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -218,7 +207,6 @@ function InvoicesContent() {
           </div>
         </div>
 
-        {/* Invoices List */}
         <div className="card overflow-hidden">
           {loading && invoices.length === 0 ? (
             <div className="text-center py-12">
@@ -228,7 +216,6 @@ function InvoicesContent() {
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  {/* ... thead (tidak berubah) ... */}
                   <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
@@ -274,7 +261,6 @@ function InvoicesContent() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
-                            {/* Tombol Aksi (tidak berubah) */}
                             {invoice.status === InvoiceStatus.DRAFT && (
                               <button
                                 onClick={() => handleSendEmail(invoice.id)}
@@ -293,7 +279,7 @@ function InvoicesContent() {
                                   onClick={() =>
                                     handleStatusUpdate(
                                       invoice.id,
-                                      InvoiceStatus.PAID
+                                      InvoiceStatus.PAID,
                                     )
                                   }
                                   className="text-green-600 hover:text-green-800 text-sm font-medium"
@@ -315,8 +301,7 @@ function InvoicesContent() {
                   </tbody>
                 </table>
               </div>
-              
-              {/* --- 7. TAMBAHKAN UI PAGINASI --- */}
+
               {pagination && pagination.totalPages > 1 && (
                 <div className="flex justify-between items-center p-4 border-t">
                   <button

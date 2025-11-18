@@ -15,22 +15,18 @@ function GoogleCallback() {
 
     if (token && userParam) {
       try {
-        // 1. Ambil data dari URL
         const user: User = JSON.parse(decodeURIComponent(userParam));
 
-        // 2. Simpan ke localStorage
         localStorage.setItem("authToken", token);
         localStorage.setItem("user", JSON.stringify(user));
 
-        // 3. Tampilkan pesan sukses dan redirect
         toast.success("Login with Google successful!");
-        router.push("/dashboard"); // Arahkan ke dashboard
+        router.push("/dashboard");
       } catch (error) {
         toast.error("Failed to process Google login.");
         router.push("/login");
       }
     } else {
-      // Jika token atau user tidak ada
       toast.error("Google login failed. No token provided.");
       router.push("/login");
     }
@@ -41,12 +37,13 @@ function GoogleCallback() {
       <div className="text-xl font-medium text-neutral-700">
         Processing your login...
       </div>
-      <p className="text-neutral-500 mt-2">Please wait, you are being redirected.</p>
+      <p className="text-neutral-500 mt-2">
+        Please wait, you are being redirected.
+      </p>
     </div>
   );
 }
 
-// Wrapper untuk Suspense (wajib untuk useSearchParams)
 export default function GoogleCallbackPage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>

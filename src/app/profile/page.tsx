@@ -1,17 +1,16 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useRef } from "react"; // Tambahkan useRef
+import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layouts/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
 import { User } from "@/lib/types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import apiHelper from "@/lib/apiHelper"; // Impor apiHelper
-import { toast } from "sonner"; // Impor toast
+import apiHelper from "@/lib/apiHelper";
+import { toast } from "sonner";
 
-// Skema Zod
 const profileSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   email: z.string().email(),
@@ -24,7 +23,7 @@ const profileSchema = z.object({
   country: z.string().optional(),
   taxId: z.string().optional(),
   bankAccount: z.string().optional(),
-  avatar: z.string().url().optional(), // <-- TAMBAHKAN AVATAR KE SKEMA
+  avatar: z.string().url().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -32,124 +31,24 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 export default function ProfilePage() {
   const { user, getProfile, updateProfile, loading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  
-  // State baru untuk proses upload
-  const [saving, setSaving] = useState(false); // Ini sekarang menangani save & upload
+
+  const [saving, setSaving] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  
-  // Ref untuk input file
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
     handleSubmit,
     reset,
-    setValue, // Kita butuh setValue
+    setValue,
     formState: { errors, isDirty },
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
   });
 
-  // useEffect untuk mengisi form
   useEffect(() => {
-    if (user) {
-      reset({
-        name: user.name || "",
-        email: user.email || "",
-        company: user.company || "",
-        phone: user.phone || "",
-        address: user.address || "",
-        city: user.city || "",
-        state: user.state || "",
-        zipCode: user.zipCode || "",
-        country: user.country || "",
-        taxId: user.taxId || "",
-        bankAccount: user.bankAccount || "",
-        avatar: user.avatar || "", // <-- ISI AVATAR
-      });
-      // Set juga preview URL jika avatar sudah ada
-      if (user.avatar) {
-        setPreviewUrl(user.avatar);
-      }
-    } else {
-      getProfile();
-    }
-  }, [user, getProfile, reset]);
-
-  // Handler untuk perubahan file
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      // Buat URL preview lokal
-      setPreviewUrl(URL.createObjectURL(file));
-    }
-  };
-
-  // Fungsi untuk mengunggah file
-  const handleUpload = async (): Promise<string | null> => {
-    if (!selectedFile) return null;
-
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-
-    try {
-      const res = await apiHelper.post<{ message: string; data: { url: string } }>(
-        "/uploads", // Endpoint upload backend Anda
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-      toast.success("Image uploaded!");
-      return res.data.data.url; // Kembalikan URL gambar
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Image upload failed");
-      return null;
-    }
-  };
-
-  // Fungsi Submit Utama
-  const onSubmit = async (data: ProfileFormData) => {
-    setSaving(true);
-    let avatarUrl = data.avatar; // Ambil URL avatar yang ada
-
-    try {
-      // 1. Jika ada file baru, unggah dulu
-      if (selectedFile) {
-        const newAvatarUrl = await handleUpload();
-        if (newAvatarUrl) {
-          avatarUrl = newAvatarUrl; // Gunakan URL baru
-          setValue("avatar", newAvatarUrl); // Set di form agar 'isDirty' false
-        } else {
-          // Gagal upload, hentikan proses
-          setSaving(false);
-          return;
-        }
-      }
-
-      // 2. Siapkan data akhir untuk dikirim
-      const finalData = { ...data, avatar: avatarUrl };
-
-      // 3. Update profil dengan data (termasuk URL avatar)
-      await updateProfile(finalData);
-      
-      setIsEditing(false);
-      setSelectedFile(null); // Bersihkan file
-    } catch (error) {
-      // Error toast sudah ditangani oleh hook
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setSelectedFile(null); // Bersihkan file
-    // Reset form ke data user
     if (user) {
       reset({
         name: user.name || "",
@@ -165,7 +64,95 @@ export default function ProfilePage() {
         bankAccount: user.bankAccount || "",
         avatar: user.avatar || "",
       });
-      // Reset preview
+
+      if (user.avatar) {
+        setPreviewUrl(user.avatar);
+      }
+    } else {
+      getProfile();
+    }
+  }, [user, getProfile, reset]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleUpload = async (): Promise<string | null> => {
+    if (!selectedFile) return null;
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    try {
+      const res = await apiHelper.post<{
+        message: string;
+        data: { url: string };
+      }>("/uploads", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      toast.success("Image uploaded!");
+      return res.data.data.url;
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Image upload failed");
+      return null;
+    }
+  };
+
+  const onSubmit = async (data: ProfileFormData) => {
+    setSaving(true);
+    let avatarUrl = data.avatar;
+
+    try {
+      if (selectedFile) {
+        const newAvatarUrl = await handleUpload();
+        if (newAvatarUrl) {
+          avatarUrl = newAvatarUrl;
+          setValue("avatar", newAvatarUrl);
+        } else {
+          setSaving(false);
+          return;
+        }
+      }
+
+      const finalData = { ...data, avatar: avatarUrl };
+
+      await updateProfile(finalData);
+
+      setIsEditing(false);
+      setSelectedFile(null);
+    } catch (error) {
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setSelectedFile(null);
+
+    if (user) {
+      reset({
+        name: user.name || "",
+        email: user.email || "",
+        company: user.company || "",
+        phone: user.phone || "",
+        address: user.address || "",
+        city: user.city || "",
+        state: user.state || "",
+        zipCode: user.zipCode || "",
+        country: user.country || "",
+        taxId: user.taxId || "",
+        bankAccount: user.bankAccount || "",
+        avatar: user.avatar || "",
+      });
+
       setPreviewUrl(user.avatar || null);
     }
   };
@@ -178,7 +165,6 @@ export default function ProfilePage() {
     );
   }
 
-  // Cek apakah ada file baru atau data form lain yang berubah
   const hasChanges = isDirty || selectedFile !== null;
 
   return (
@@ -197,8 +183,6 @@ export default function ProfilePage() {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          
-          {/* --- BAGIAN UI UPLOAD AVATAR --- */}
           <div className="card p-6">
             <h2 className="text-lg font-bold text-foreground mb-4">
               Profile Picture
@@ -222,13 +206,13 @@ export default function ProfilePage() {
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 aria-label="Upload new profile picture"
-                className="hidden" // Sembunyikan input file asli
+                className="hidden"
                 accept="image/png, image/jpeg"
                 disabled={!isEditing}
               />
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()} // Picu klik input file
+                onClick={() => fileInputRef.current?.click()}
                 disabled={!isEditing || saving}
                 className="btn-secondary disabled:opacity-50"
               >
@@ -240,7 +224,7 @@ export default function ProfilePage() {
                   onClick={() => {
                     setPreviewUrl(null);
                     setSelectedFile(null);
-                    setValue("avatar", undefined, { shouldDirty: true }); // Tandai form "dirty"
+                    setValue("avatar", undefined, { shouldDirty: true });
                   }}
                   disabled={saving}
                   className="text-sm text-red-600 hover:text-red-800"
@@ -250,8 +234,7 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
-          
-          {/* Business Information (Form tidak berubah) */}
+
           <div className="card p-6">
             <h2 className="text-lg font-bold text-foreground mb-4">
               Business Information
@@ -268,12 +251,14 @@ export default function ProfilePage() {
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
-                  } ${errors.name ? 'border-red-500' : ''}`}
+                  } ${errors.name ? "border-red-500" : ""}`}
                   placeholder="Your Full Name"
                   title="Full Name"
                 />
                 {errors.name && (
-                  <p className="text-danger text-sm mt-1">{errors.name.message}</p>
+                  <p className="text-danger text-sm mt-1">
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
               <div>
@@ -301,12 +286,14 @@ export default function ProfilePage() {
                   disabled={!isEditing}
                   className={`input-field ${
                     !isEditing && "bg-neutral-100 cursor-not-allowed"
-                  } ${errors.company ? 'border-red-500' : ''}`}
+                  } ${errors.company ? "border-red-500" : ""}`}
                   placeholder="Company Name"
                   title="Company Name"
                 />
                 {errors.company && (
-                  <p className="text-danger text-sm mt-1">{errors.company.message}</p>
+                  <p className="text-danger text-sm mt-1">
+                    {errors.company.message}
+                  </p>
                 )}
               </div>
               <div>
@@ -328,7 +315,6 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Address (Form tidak berubah) */}
           <div className="card p-6">
             <h2 className="text-lg font-bold text-foreground mb-4">Address</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -415,7 +401,6 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Tax & Payment (Form tidak berubah) */}
           <div className="card p-6">
             <h2 className="text-lg font-bold text-foreground mb-4">
               Tax & Payment Information
@@ -456,15 +441,18 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Actions */}
           {isEditing && (
             <div className="flex gap-3">
               <button
                 type="submit"
-                disabled={saving || !hasChanges} // Disable jika menyimpan ATAU tidak ada perubahan
+                disabled={saving || !hasChanges}
                 className="btn-primary flex-1 disabled:opacity-50"
               >
-                {saving ? (selectedFile ? "Uploading..." : "Saving...") : "Save Changes"}
+                {saving
+                  ? selectedFile
+                    ? "Uploading..."
+                    : "Saving..."
+                  : "Save Changes"}
               </button>
               <button
                 type="button"

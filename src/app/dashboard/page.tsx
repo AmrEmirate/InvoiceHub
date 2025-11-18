@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layouts/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
-import { useDashboard } from "@/hooks/use-dashboard"; 
+import { useDashboard } from "@/hooks/use-dashboard";
 import StatCard from "@/components/dashboard/stat-card";
 import InvoiceChart from "@/components/dashboard/invoice-chart";
 import RecentInvoices from "@/components/dashboard/recent-invoices";
@@ -12,9 +12,13 @@ import RecentInvoices from "@/components/dashboard/recent-invoices";
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  
-  // --- AMBIL `chartData` DARI HOOK ---
-  const { stats, recentInvoices, chartData, loading: dataLoading } = useDashboard();
+
+  const {
+    stats,
+    recentInvoices,
+    chartData,
+    loading: dataLoading,
+  } = useDashboard();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -33,13 +37,11 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header (tidak berubah) */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-neutral-600">Welcome back, {user?.name}!</p>
         </div>
 
-        {/* Stats Grid (tidak berubah) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Total Invoices"
@@ -67,22 +69,23 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Revenue Card (tidak berubah) */}
         <div className="card p-6">
-          <h2 className="text-xl font-bold text-foreground mb-2">Total Revenue</h2>
+          <h2 className="text-xl font-bold text-foreground mb-2">
+            Total Revenue
+          </h2>
           <p className="text-4xl font-bold text-accent">
-            {/* Format ke mata uang lokal */}
-            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(stats.totalRevenue)}
+            {new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: "USD",
+            }).format(stats.totalRevenue)}
           </p>
           <p className="text-neutral-600 text-sm mt-2">
             From {stats.paidInvoices} paid invoices
           </p>
         </div>
 
-        {/* Charts & Recent Invoices */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            {/* --- TERUSKAN `chartData` SEBAGAI PROP --- */}
             <InvoiceChart data={chartData} />
           </div>
           <div>

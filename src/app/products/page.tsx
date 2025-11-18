@@ -4,62 +4,57 @@ import type React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 import DashboardLayout from "@/components/layouts/dashboard-layout";
-import { useApi } from "@/hooks/use-api"; // Hook useApi kita yang sudah diperbarui
+import { useApi } from "@/hooks/use-api";
 import { Product, Category } from "@/lib/types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-// Skema (tidak berubah)
 const productSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   sku: z.string().min(1, "SKU is required"),
   price: z.preprocess(
     (a) => parseFloat(a as string),
-    z.number().min(0.01, "Price must be greater than 0")
+    z.number().min(0.01, "Price must be greater than 0"),
   ),
   categoryId: z.string().min(1, "Category is required"),
   description: z.string().optional(),
 });
 type ProductFormData = z.infer<typeof productSchema>;
 
-// --- 1. PENGATURAN PAGINASI ---
 const PRODUCTS_PER_PAGE = 10;
 
 function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // --- 2. AMBIL `pagination` DARI useApi ---
   const {
     data: products,
     loading: loadingProducts,
-    pagination, // Ambil metadata paginasi
+    pagination,
     getAll: getProducts,
     create: createProduct,
     update: updateProduct,
     remove: deleteProduct,
   } = useApi<Product, ProductFormData>("products");
 
-  const { data: categories, getAll: getCategories } = useApi<Category>(
-    "categories"
-  );
+  const { data: categories, getAll: getCategories } =
+    useApi<Category>("categories");
 
-  // --- 3. STATE DINAMIS DARI URL ---
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || "",
+  );
   const [categoryFilter, setCategoryFilter] = useState(
-    searchParams.get("categoryId") || "all"
+    searchParams.get("categoryId") || "all",
   );
   const [currentPage, setCurrentPage] = useState(
-    Number(searchParams.get("page")) || 1
+    Number(searchParams.get("page")) || 1,
   );
-  
-  // State UI (tidak berubah)
+
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Form hook (tidak berubah)
   const {
     register,
     handleSubmit,
@@ -69,16 +64,18 @@ function ProductsContent() {
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      name: "", description: "", price: 0, categoryId: "", sku: "",
+      name: "",
+      description: "",
+      price: 0,
+      categoryId: "",
+      sku: "",
     },
   });
 
-  // Fetch Kategori
   useEffect(() => {
-    getCategories(); // Tidak perlu paginasi untuk dropdown
+    getCategories();
   }, [getCategories]);
 
-  // --- 4. PERBARUI useEffect UNTUK PRODUK ---
   useEffect(() => {
     const params: any = {
       page: currentPage,
@@ -86,45 +83,45 @@ function ProductsContent() {
     };
     if (searchTerm) params.search = searchTerm;
     if (categoryFilter !== "all") params.categoryId = categoryFilter;
-    
+
     getProducts(params);
   }, [getProducts, searchTerm, categoryFilter, currentPage]);
 
-  // --- 5. FUNGSI BARU UNTUK MENGELOLA URL ---
-  const updateQueryParams = (params: { page?: number; search?: string; categoryId?: string }) => {
+  const updateQueryParams = (params: {
+    page?: number;
+    search?: string;
+    categoryId?: string;
+  }) => {
     const newParams = new URLSearchParams(searchParams);
 
-    // Set Halaman
     if (params.page !== undefined) {
       if (params.page > 1) newParams.set("page", params.page.toString());
       else newParams.delete("page");
     }
-    
-    // Set Pencarian
+
     if (params.search !== undefined) {
       if (params.search) newParams.set("search", params.search);
       else newParams.delete("search");
     }
-    
-    // Set Kategori
+
     if (params.categoryId !== undefined) {
-      if (params.categoryId !== "all") newParams.set("categoryId", params.categoryId);
+      if (params.categoryId !== "all")
+        newParams.set("categoryId", params.categoryId);
       else newParams.delete("categoryId");
     }
 
     router.push(`?${newParams.toString()}`);
   };
 
-  // --- 6. PERBARUI HANDLER ---
   const handleSearch = (value: string) => {
     setSearchTerm(value);
-    setCurrentPage(1); // Reset ke halaman 1
+    setCurrentPage(1);
     updateQueryParams({ page: 1, search: value });
   };
 
   const handleCategoryFilter = (value: string) => {
     setCategoryFilter(value);
-    setCurrentPage(1); // Reset ke halaman 1
+    setCurrentPage(1);
     updateQueryParams({ page: 1, categoryId: value });
   };
 
@@ -132,7 +129,7 @@ function ProductsContent() {
     setSearchTerm("");
     setCategoryFilter("all");
     setCurrentPage(1);
-    router.push("/products"); // Hapus semua params
+    router.push("/products");
   };
 
   const handlePageChange = (newPage: number) => {
@@ -140,7 +137,6 @@ function ProductsContent() {
     updateQueryParams({ page: newPage });
   };
 
-  // Handler Form (tidak berubah)
   const handleCloseForm = () => {
     setShowForm(false);
     reset({ name: "", description: "", price: 0, categoryId: "", sku: "" });
@@ -163,7 +159,7 @@ function ProductsContent() {
     setValue("description", product.description || "");
     setShowForm(true);
   };
-  
+
   const onSubmit = async (data: ProductFormData) => {
     try {
       if (isEditing && selectedId) {
@@ -172,27 +168,25 @@ function ProductsContent() {
         await createProduct(data);
       }
       handleCloseForm();
-      // Panggil ulang data di halaman saat ini
-      getProducts({ 
-        page: currentPage, 
+
+      getProducts({
+        page: currentPage,
         limit: PRODUCTS_PER_PAGE,
         search: searchTerm,
-        categoryId: categoryFilter
+        categoryId: categoryFilter,
       });
-    } catch (error) {
-      // Error handled by hook
-    }
+    } catch (error) {}
   };
 
   const handleDeleteProduct = async (id: string) => {
     if (confirm("Are you sure you want to delete this product?")) {
       await deleteProduct(id);
-      // Panggil ulang data di halaman saat ini
-      getProducts({ 
-        page: currentPage, 
+
+      getProducts({
+        page: currentPage,
         limit: PRODUCTS_PER_PAGE,
         search: searchTerm,
-        categoryId: categoryFilter
+        categoryId: categoryFilter,
       });
     }
   };
@@ -200,7 +194,6 @@ function ProductsContent() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header (tidak berubah) */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
@@ -218,10 +211,9 @@ function ProductsContent() {
           </button>
         </div>
 
-        {/* Form Add/Edit (tidak berubah) */}
         {showForm && (
           <div className="card p-6 bg-green-50 border-green-200">
-             <h2 className="text-xl font-bold text-foreground mb-4">
+            <h2 className="text-xl font-bold text-foreground mb-4">
               {isEditing ? "Edit Product" : "Add New Product"}
             </h2>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -231,11 +223,13 @@ function ProductsContent() {
                   <input
                     type="text"
                     {...register("name")}
-                    className={`input-field ${errors.name ? 'border-red-500' : ''}`}
+                    className={`input-field ${errors.name ? "border-red-500" : ""}`}
                     placeholder="Product name"
                   />
                   {errors.name && (
-                    <p className="text-danger text-sm mt-1">{errors.name.message}</p>
+                    <p className="text-danger text-sm mt-1">
+                      {errors.name.message}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -243,11 +237,13 @@ function ProductsContent() {
                   <input
                     type="text"
                     {...register("sku")}
-                    className={`input-field ${errors.sku ? 'border-red-500' : ''}`}
+                    className={`input-field ${errors.sku ? "border-red-500" : ""}`}
                     placeholder="Product SKU"
                   />
-                   {errors.sku && (
-                    <p className="text-danger text-sm mt-1">{errors.sku.message}</p>
+                  {errors.sku && (
+                    <p className="text-danger text-sm mt-1">
+                      {errors.sku.message}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -257,11 +253,13 @@ function ProductsContent() {
                     min="0"
                     step="0.01"
                     {...register("price")}
-                    className={`input-field ${errors.price ? 'border-red-500' : ''}`}
+                    className={`input-field ${errors.price ? "border-red-500" : ""}`}
                     placeholder="0.00"
                   />
-                   {errors.price && (
-                    <p className="text-danger text-sm mt-1">{errors.price.message}</p>
+                  {errors.price && (
+                    <p className="text-danger text-sm mt-1">
+                      {errors.price.message}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -269,7 +267,7 @@ function ProductsContent() {
                   <select
                     {...register("categoryId")}
                     title="Select product category"
-                    className={`input-field ${errors.categoryId ? 'border-red-500' : ''}`}
+                    className={`input-field ${errors.categoryId ? "border-red-500" : ""}`}
                   >
                     <option value="">Select Category</option>
                     {categories.map((cat) => (
@@ -279,7 +277,9 @@ function ProductsContent() {
                     ))}
                   </select>
                   {errors.categoryId ? (
-                     <p className="text-danger text-sm mt-1">{errors.categoryId.message}</p>
+                    <p className="text-danger text-sm mt-1">
+                      {errors.categoryId.message}
+                    </p>
                   ) : (
                     categories.length === 0 && (
                       <p className="text-xs text-red-500 mt-1">
@@ -302,13 +302,16 @@ function ProductsContent() {
                 className="btn-primary"
                 disabled={loadingProducts}
               >
-                {loadingProducts ? "Saving..." : isEditing ? "Update Product" : "Save Product"}
+                {loadingProducts
+                  ? "Saving..."
+                  : isEditing
+                    ? "Update Product"
+                    : "Save Product"}
               </button>
             </form>
           </div>
         )}
 
-        {/* Filters (Input value di-link ke state) */}
         <div className="card p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -345,7 +348,6 @@ function ProductsContent() {
           </div>
         </div>
 
-        {/* Products List */}
         <div className="card overflow-hidden">
           {loadingProducts && products.length === 0 ? (
             <div className="text-center py-12">
@@ -355,8 +357,7 @@ function ProductsContent() {
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  {/* ... thead (tidak berubah) ... */}
-                   <thead className="bg-neutral-50 border-b border-neutral-200">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
                         Name
@@ -392,7 +393,9 @@ function ProductsContent() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-neutral-600">{product.sku}</span>
+                          <span className="text-neutral-600">
+                            {product.sku}
+                          </span>
                         </td>
                         <td className="px-6 py-4">
                           <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
@@ -406,9 +409,10 @@ function ProductsContent() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
-                            <button 
+                            <button
                               onClick={() => handleOpenEdit(product)}
-                              className="text-accent hover:text-accent-dark text-sm font-medium">
+                              className="text-accent hover:text-accent-dark text-sm font-medium"
+                            >
                               Edit
                             </button>
                             <button
@@ -424,8 +428,7 @@ function ProductsContent() {
                   </tbody>
                 </table>
               </div>
-              
-              {/* --- 7. TAMBAHKAN UI PAGINASI --- */}
+
               {pagination && pagination.totalPages > 1 && (
                 <div className="flex justify-between items-center p-4 border-t">
                   <button
@@ -440,7 +443,9 @@ function ProductsContent() {
                   </span>
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === pagination.totalPages || loadingProducts}
+                    disabled={
+                      currentPage === pagination.totalPages || loadingProducts
+                    }
                     className="btn-secondary disabled:opacity-50"
                   >
                     Next

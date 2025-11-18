@@ -7,12 +7,10 @@ import DashboardLayout from "@/components/layouts/dashboard-layout";
 import { useApi } from "@/hooks/use-api";
 import { Category } from "@/lib/types";
 
-// --- 1. IMPORT BARU ---
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-// --- 2. BUAT SKEMA VALIDASI ---
 const categorySchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
 });
@@ -32,13 +30,13 @@ function CategoriesContent() {
     remove,
   } = useApi<Category, CategoryFormData>("categories");
 
-  // State UI
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || "",
+  );
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // --- 3. INISIALISASI REACT-HOOK-FORM ---
   const {
     register,
     handleSubmit,
@@ -50,12 +48,9 @@ function CategoriesContent() {
     defaultValues: { name: "" },
   });
 
-  // Fetch Data
   useEffect(() => {
     getAll({ search: searchTerm });
   }, [getAll, searchTerm]);
-
-  // --- Handlers ---
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -66,27 +61,26 @@ function CategoriesContent() {
   };
 
   const handleOpenAdd = () => {
-    reset({ name: "" }); // Reset form
+    reset({ name: "" });
     setIsEditing(false);
     setSelectedId(null);
     setShowForm(true);
   };
 
   const handleOpenEdit = (category: Category) => {
-    setValue("name", category.name); // Isi form
+    setValue("name", category.name);
     setIsEditing(true);
     setSelectedId(category.id);
     setShowForm(true);
   };
-  
+
   const handleCloseForm = () => {
     setShowForm(false);
     reset({ name: "" });
     setIsEditing(false);
     setSelectedId(null);
-  }
+  };
 
-  // --- 4. PERBARUI SUBMIT HANDLER ---
   const onSubmit = async (data: CategoryFormData) => {
     try {
       if (isEditing && selectedId) {
@@ -95,9 +89,7 @@ function CategoriesContent() {
         await create(data);
       }
       handleCloseForm();
-    } catch (error) {
-      // Error handled by hook
-    }
+    } catch (error) {}
   };
 
   const handleDelete = async (id: string) => {
@@ -109,35 +101,41 @@ function CategoriesContent() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Categories</h1>
             <p className="text-neutral-600">Manage product categories</p>
           </div>
-          <button onClick={showForm ? handleCloseForm : handleOpenAdd} className="btn-primary">
+          <button
+            onClick={showForm ? handleCloseForm : handleOpenAdd}
+            className="btn-primary"
+          >
             {showForm ? "Cancel" : "+ Add Category"}
           </button>
         </div>
 
-        {/* Form Section */}
         {showForm && (
           <div className="card p-6 bg-blue-50 border-blue-200 max-w-xl">
             <h2 className="text-lg font-bold text-foreground mb-4">
               {isEditing ? "Edit Category" : "New Category"}
             </h2>
-            {/* --- 5. HUBUNGKAN FORM --- */}
-            <form onSubmit={handleSubmit(onSubmit)} className="flex gap-4 items-start">
+
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="flex gap-4 items-start"
+            >
               <div className="flex-1">
                 <label className="label-text">Category Name *</label>
                 <input
                   type="text"
-                  {...register("name")} // Gunakan register
-                  className={`input-field w-full ${errors.name ? 'border-red-500' : ''}`}
+                  {...register("name")}
+                  className={`input-field w-full ${errors.name ? "border-red-500" : ""}`}
                   placeholder="e.g. Services, Electronics"
                 />
                 {errors.name && (
-                  <p className="text-danger text-sm mt-1">{errors.name.message}</p>
+                  <p className="text-danger text-sm mt-1">
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
               <button
@@ -151,7 +149,6 @@ function CategoriesContent() {
           </div>
         )}
 
-        {/* Search */}
         <div className="card p-6">
           <input
             type="text"
@@ -162,7 +159,6 @@ function CategoriesContent() {
           />
         </div>
 
-        {/* Categories List (Tidak berubah) */}
         <div className="card overflow-hidden">
           {loading && categories.length === 0 ? (
             <div className="text-center py-12">

@@ -34,7 +34,10 @@ export function useAuth() {
   const register = useCallback(async (data: any) => {
     setLoading(true);
     try {
-      const res = await apiHelper.post<ApiResponse<null>>("/auth/register", data);
+      const res = await apiHelper.post<ApiResponse<null>>(
+        "/auth/register",
+        data,
+      );
       toast.success("Check your email!", {
         description: res.data.message,
       });
@@ -47,26 +50,32 @@ export function useAuth() {
     }
   }, []);
 
-  const login = useCallback(async (data: any) => {
-    setLoading(true);
-    try {
-      const res = await apiHelper.post<ApiResponse<AuthResponse>>("/auth/login", data);
-      
-      localStorage.setItem("authToken", res.data.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.data.user));
-      
-      setUser(res.data.data.user);
-      
-      toast.success("Login successful");
-      router.push("/dashboard");
-    } catch (error: any) {
-      const msg = error.response?.data?.message || "Login failed";
-      toast.error("Error", { description: msg });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
+  const login = useCallback(
+    async (data: any) => {
+      setLoading(true);
+      try {
+        const res = await apiHelper.post<ApiResponse<AuthResponse>>(
+          "/auth/login",
+          data,
+        );
+
+        localStorage.setItem("authToken", res.data.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.data.user));
+
+        setUser(res.data.data.user);
+
+        toast.success("Login successful");
+        router.push("/dashboard");
+      } catch (error: any) {
+        const msg = error.response?.data?.message || "Login failed";
+        toast.error("Error", { description: msg });
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [router],
+  );
 
   const logout = useCallback(() => {
     localStorage.removeItem("authToken");
@@ -104,33 +113,34 @@ export function useAuth() {
     }
   }, []);
 
-  // --- FUNGSI 'SET PASSWORD' YANG KITA TAMBAHKAN ---
-  const setPassword = useCallback(async (token: string, password: string) => {
-    setLoading(true);
-    try {
-      const res = await apiHelper.post<ApiResponse<null>>(
-        "/auth/set-password",
-        {
-          token,
-          password,
-        }
-      );
+  const setPassword = useCallback(
+    async (token: string, password: string) => {
+      setLoading(true);
+      try {
+        const res = await apiHelper.post<ApiResponse<null>>(
+          "/auth/set-password",
+          {
+            token,
+            password,
+          },
+        );
 
-      toast.success("Password set!", {
-        description: res.data.message,
-      });
-      
-      router.push("/login");
-    } catch (error: any) {
-      const msg = error.response?.data?.message || "Failed to set password";
-      toast.error("Error", { description: msg });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
+        toast.success("Password set!", {
+          description: res.data.message,
+        });
 
-  // --- PERBAIKAN DI SINI ---
+        router.push("/login");
+      } catch (error: any) {
+        const msg = error.response?.data?.message || "Failed to set password";
+        toast.error("Error", { description: msg });
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [router],
+  );
+
   return {
     user,
     loading,
@@ -139,6 +149,6 @@ export function useAuth() {
     logout,
     getProfile,
     updateProfile,
-    setPassword, // <-- Pastikan ini ditambahkan
+    setPassword,
   };
 }

@@ -10,7 +10,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-// Skema tidak berubah
 const clientSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   email: z.string().email("Must be a valid email"),
@@ -20,36 +19,33 @@ const clientSchema = z.object({
 });
 type ClientFormData = z.infer<typeof clientSchema>;
 
-// --- Pengaturan Paginasi ---
-const CLIENTS_PER_PAGE = 6; // Kita akan tampilkan 6 klien per halaman
+const CLIENTS_PER_PAGE = 6;
 
 function ClientsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // --- 1. AMBIL `pagination` DARI useApi ---
   const {
     data: clients,
     loading,
-    pagination, // Ambil metadata paginasi
+    pagination,
     getAll,
     create,
     update,
     remove,
   } = useApi<Client, ClientFormData>("clients");
 
-  // --- 2. STATE DINAMIS DARI URL ---
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || "",
+  );
   const [currentPage, setCurrentPage] = useState(
-    Number(searchParams.get("page")) || 1
+    Number(searchParams.get("page")) || 1,
   );
 
-  // State UI (tidak berubah)
   const [showAddForm, setShowAddForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Form hook (tidak berubah)
   const {
     register,
     handleSubmit,
@@ -67,55 +63,63 @@ function ClientsContent() {
     },
   });
 
-  // --- 3. PERBARUI useEffect UNTUK MENGIRIM PARAMETER PAGINASI ---
   useEffect(() => {
-    // Ambil data berdasarkan state saat ini
-    getAll({ 
-      search: searchTerm, 
-      page: currentPage, 
-      limit: CLIENTS_PER_PAGE 
+    getAll({
+      search: searchTerm,
+      page: currentPage,
+      limit: CLIENTS_PER_PAGE,
     });
   }, [getAll, searchTerm, currentPage]);
-  
-  // --- 4. FUNGSI BARU UNTUK MENGELOLA URL ---
+
   const updateQueryParams = (page: number, search: string) => {
     const params = new URLSearchParams(searchParams);
-    // Set halaman
+
     if (page > 1) {
       params.set("page", page.toString());
     } else {
-      params.delete("page"); // Hapus jika halaman 1
+      params.delete("page");
     }
-    // Set pencarian
+
     if (search) {
       params.set("search", search);
     } else {
       params.delete("search");
     }
-    // Dorong ke router
+
     router.push(`?${params.toString()}`);
   };
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
-    setCurrentPage(1); // Selalu reset ke halaman 1 saat mencari
+    setCurrentPage(1);
     updateQueryParams(1, value);
   };
-  
+
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
     updateQueryParams(newPage, searchTerm);
-  }
+  };
 
-  // Handler Form (tidak berubah)
   const handleCloseForm = () => {
     setShowAddForm(false);
-    reset({ name: "", email: "", phone: "", address: "", paymentPreferences: "" });
+    reset({
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      paymentPreferences: "",
+    });
     setIsEditing(false);
     setSelectedId(null);
   };
   const handleOpenAdd = () => {
-    reset({ name: "", email: "", phone: "", address: "", paymentPreferences: "" });
+    reset({
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      paymentPreferences: "",
+    });
     setIsEditing(false);
     setSelectedId(null);
     setShowAddForm(true);
@@ -130,7 +134,7 @@ function ClientsContent() {
     setValue("paymentPreferences", client.paymentPreferences || "");
     setShowAddForm(true);
   };
-  
+
   const onSubmit = async (data: ClientFormData) => {
     try {
       if (isEditing && selectedId) {
@@ -139,21 +143,19 @@ function ClientsContent() {
         await create(data);
       }
       handleCloseForm();
-      // Panggil ulang getAll untuk data terbaru (mungkin di halaman 1)
-      handlePageChange(1); 
-    } catch (error) {
-      // Error handled by hook
-    }
+
+      handlePageChange(1);
+    } catch (error) {}
   };
 
   const handleDeleteClient = async (id: string) => {
     if (confirm("Are you sure you want to delete this client?")) {
       await remove(id);
-      // Panggil ulang getAll untuk halaman saat ini
-      getAll({ 
-        search: searchTerm, 
-        page: currentPage, 
-        limit: CLIENTS_PER_PAGE 
+
+      getAll({
+        search: searchTerm,
+        page: currentPage,
+        limit: CLIENTS_PER_PAGE,
       });
     }
   };
@@ -174,7 +176,6 @@ function ClientsContent() {
           </button>
         </div>
 
-        {/* Form Add/Edit (tidak berubah) */}
         {showAddForm && (
           <div className="card p-6 bg-blue-50 border-blue-200">
             <h2 className="text-xl font-bold text-foreground mb-4">
@@ -187,11 +188,13 @@ function ClientsContent() {
                   <input
                     type="text"
                     {...register("name")}
-                    className={`input-field ${errors.name ? 'border-red-500' : ''}`}
+                    className={`input-field ${errors.name ? "border-red-500" : ""}`}
                     placeholder="Client name"
                   />
                   {errors.name && (
-                    <p className="text-danger text-sm mt-1">{errors.name.message}</p>
+                    <p className="text-danger text-sm mt-1">
+                      {errors.name.message}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -199,11 +202,13 @@ function ClientsContent() {
                   <input
                     type="email"
                     {...register("email")}
-                    className={`input-field ${errors.email ? 'border-red-500' : ''}`}
+                    className={`input-field ${errors.email ? "border-red-500" : ""}`}
                     placeholder="client@example.com"
                   />
                   {errors.email && (
-                    <p className="text-danger text-sm mt-1">{errors.email.message}</p>
+                    <p className="text-danger text-sm mt-1">
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -235,13 +240,16 @@ function ClientsContent() {
                 />
               </div>
               <button type="submit" disabled={loading} className="btn-primary">
-                {loading ? "Saving..." : isEditing ? "Update Client" : "Save Client"}
+                {loading
+                  ? "Saving..."
+                  : isEditing
+                    ? "Update Client"
+                    : "Save Client"}
               </button>
             </form>
           </div>
         )}
 
-        {/* Search (tidak berubah) */}
         <div className="card p-6">
           <input
             type="text"
@@ -252,7 +260,6 @@ function ClientsContent() {
           />
         </div>
 
-        {/* Clients List (tidak berubah) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {loading && clients.length === 0 ? (
             <div className="col-span-full text-center py-12">
@@ -303,7 +310,6 @@ function ClientsContent() {
           )}
         </div>
 
-        {/* --- 5. TAMBAHKAN UI PAGINASI --- */}
         {pagination && pagination.totalPages > 1 && (
           <div className="flex justify-between items-center mt-6">
             <button

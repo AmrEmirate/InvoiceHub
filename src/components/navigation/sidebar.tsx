@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth"; // Gunakan hook auth kita
+import { useAuth } from "@/hooks/use-auth";
 
 interface NavItem {
   label: string;
@@ -16,7 +16,7 @@ const navItems: NavItem[] = [
   { label: "Invoices", href: "/invoices", icon: "📄" },
   { label: "Clients", href: "/clients", icon: "👥" },
   { label: "Products", href: "/products", icon: "📦" },
-  { label: "Categories", href: "/categories", icon: "🏷️" }, // Item Baru
+  { label: "Categories", href: "/categories", icon: "🏷️" },
   { label: "Profile", href: "/profile", icon: "⚙️" },
 ];
 
@@ -28,7 +28,7 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
-  const { logout } = useAuth(); // Ambil fungsi logout dari hook
+  const { logout } = useAuth();
 
   const handleNavClick = () => {
     if (window.innerWidth < 768) {
@@ -85,7 +85,7 @@ export default function Sidebar({
 
         <div className="p-4 border-t border-primary-light">
           <button
-            onClick={logout} // Panggil fungsi logout dari hook
+            onClick={logout}
             className="w-full px-4 py-2 bg-danger/10 text-danger rounded-lg hover:bg-danger/20 transition-colors text-sm font-medium"
           >
             Logout

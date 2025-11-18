@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 function SetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setPassword, loading } = useAuth(); // Kita akan tambahkan 'setPassword' ke hook
+  const { setPassword, loading } = useAuth();
 
   const [formData, setFormData] = useState({
     password: "",
@@ -43,7 +43,6 @@ function SetPasswordForm() {
 
     try {
       await setPassword(token, formData.password);
-      // Jika sukses, hook akan redirect ke login
     } catch (err: any) {
       const msg =
         err.response?.data?.message ||
@@ -59,7 +58,10 @@ function SetPasswordForm() {
         <p className="text-neutral-600">
           This password reset link is invalid or has expired.
         </p>
-        <Link href="/login" className="text-accent hover:text-accent-dark font-medium mt-4 inline-block">
+        <Link
+          href="/login"
+          className="text-accent hover:text-accent-dark font-medium mt-4 inline-block"
+        >
           Back to Login
         </Link>
       </div>
@@ -118,21 +120,23 @@ function SetPasswordForm() {
   );
 }
 
-// Komponen wrapper untuk layout dan Suspense (wajib untuk useSearchParams)
 export default function SetPasswordPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary to-primary-light flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo/Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-accent mb-4">
             <span className="text-xl font-bold text-white">₹</span>
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Welcome!</h1>
-          <p className="text-neutral-300">Just one last step to secure your account.</p>
+          <p className="text-neutral-300">
+            Just one last step to secure your account.
+          </p>
         </div>
 
-        <Suspense fallback={<div className="card p-8 text-center">Loading...</div>}>
+        <Suspense
+          fallback={<div className="card p-8 text-center">Loading...</div>}
+        >
           <SetPasswordForm />
         </Suspense>
       </div>

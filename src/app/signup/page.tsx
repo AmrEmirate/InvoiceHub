@@ -3,10 +3,10 @@
 import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/hooks/use-auth"; // Menggunakan hook baru
+import { useAuth } from "@/hooks/use-auth";
 
 export default function SignupPage() {
-  const { register, loading } = useAuth(); // Ambil fungsi register & loading
+  const { register, loading } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -25,22 +25,17 @@ export default function SignupPage() {
     e.preventDefault();
     setError("");
 
-    // Validasi Frontend (Sederhana)
     if (!formData.name || !formData.email || !formData.company) {
       setError("Please fill in all fields");
       return;
     }
 
     try {
-      // Panggil fungsi register dari hook useAuth
-      // Hook ini akan menangani request API
       await register({
         name: formData.name,
         email: formData.email,
         company: formData.company,
       });
-      // Jika sukses, hook useAuth akan menampilkan toast
-      // dan (opsional) bisa me-redirect atau menampilkan pesan sukses
     } catch (err: any) {
       const msg =
         err.response?.data?.message || "Signup failed. Please try again.";
@@ -51,7 +46,6 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary to-primary-light flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo/Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-accent mb-4">
             <span className="text-xl font-bold text-white">₹</span>
@@ -60,7 +54,6 @@ export default function SignupPage() {
           <p className="text-neutral-300">Join InvoiceHub today</p>
         </div>
 
-        {/* Signup Card */}
         <div className="card p-8 mb-6">
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
@@ -104,8 +97,6 @@ export default function SignupPage() {
                 required
               />
             </div>
-
-            {/* FIELD PASSWORD DAN CONFIRM PASSWORD DIHAPUS */}
 
             {error && (
               <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm">

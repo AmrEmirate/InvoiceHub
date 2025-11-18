@@ -21,22 +21,33 @@ export default function RecentInvoices({ invoices }: RecentInvoicesProps) {
 
   return (
     <div className="card p-6">
-      <h2 className="text-lg font-bold text-foreground mb-4">Recent Invoices</h2>
+      <h2 className="text-lg font-bold text-foreground mb-4">
+        Recent Invoices
+      </h2>
       <div className="space-y-3">
         {invoices.length === 0 ? (
           <p className="text-sm text-neutral-500">No recent invoices found.</p>
         ) : (
           invoices.map((invoice) => (
-            <div key={invoice.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+            <div
+              key={invoice.id}
+              className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"
+            >
               <div>
-                <p className="font-medium text-foreground text-sm">{invoice.invoiceNumber}</p>
-                <p className="text-xs text-neutral-600">{invoice.client?.name || "Unknown Client"}</p>
+                <p className="font-medium text-foreground text-sm">
+                  {invoice.invoiceNumber}
+                </p>
+                <p className="text-xs text-neutral-600">
+                  {invoice.client?.name || "Unknown Client"}
+                </p>
               </div>
               <div className="text-right">
                 <p className="font-semibold text-foreground text-sm">
                   ${Number(invoice.totalAmount).toLocaleString()}
                 </p>
-                <span className={`text-xs font-medium px-2 py-1 rounded ${getStatusColor(invoice.status)}`}>
+                <span
+                  className={`text-xs font-medium px-2 py-1 rounded ${getStatusColor(invoice.status)}`}
+                >
                   {invoice.status}
                 </span>
               </div>
