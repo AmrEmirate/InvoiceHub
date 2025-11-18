@@ -15,8 +15,8 @@ import {
   BusinessInfo,
   AddressInfo,
   TaxPaymentInfo,
-} from "./profile-form-sections";
-import { AvatarUpload } from "./avatar-upload";
+} from "@/components/profile/profile-form-sections";
+import { AvatarUpload } from "@/components/profile/avatar-upload";
 
 export default function ProfilePage() {
   const { user, getProfile, updateProfile, loading: authLoading } = useAuth();

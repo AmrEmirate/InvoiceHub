@@ -12,9 +12,9 @@ import {
   clientSchema,
   ClientFormData,
   ClientForm,
-} from "./client-form";
-import { ClientList } from "./client-list";
-import { ClientPagination } from "./client-pagination";
+} from "@/components/clients/client-form";
+import { ClientList } from "@/components/clients/client-list";
+import { ClientPagination } from "@/components/clients/client-pagination";
 
 const CLIENTS_PER_PAGE = 6;
 

@@ -8,9 +8,9 @@ import { useApi } from "@/hooks/use-api";
 import apiHelper from "@/lib/apiHelper";
 import { Invoice, InvoiceStatus } from "@/lib/types";
 import { toast } from "sonner";
-import { InvoiceFilter } from "./invoice-filter";
-import { InvoiceTable } from "./invoice-table";
-import { InvoicePagination } from "./invoice-pagination";
+import { InvoiceFilter } from "@/components/invoices/invoice-filter";
+import { InvoiceTable } from "@/components/invoices/invoice-table";
+import { InvoicePagination } from "@/components/invoices/invoice-pagination";
 
 const INVOICES_PER_PAGE = 10;
 

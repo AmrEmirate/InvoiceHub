@@ -12,10 +12,10 @@ import {
   productSchema,
   ProductFormData,
   ProductForm,
-} from "./product-form";
-import { ProductFilter } from "./product-filter";
-import { ProductTable } from "./product-table";
-import { ProductPagination } from "./product-pagination";
+} from "@/components/products/product-form";
+import { ProductFilter } from "@/components/products/product-filter";
+import { ProductTable } from "@/components/products/product-table";
+import { ProductPagination } from "@/components/products/product-pagination";
 
 const PRODUCTS_PER_PAGE = 10;
 
