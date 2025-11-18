@@ -8,19 +8,14 @@ import { useApi } from "@/hooks/use-api";
 import { Product, Category } from "@/lib/types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-
-const productSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters"),
-  sku: z.string().min(1, "SKU is required"),
-  price: z.preprocess(
-    (a) => parseFloat(a as string),
-    z.number().min(0.01, "Price must be greater than 0"),
-  ),
-  categoryId: z.string().min(1, "Category is required"),
-  description: z.string().optional(),
-});
-type ProductFormData = z.infer<typeof productSchema>;
+import {
+  productSchema,
+  ProductFormData,
+  ProductForm,
+} from "./product-form";
+import { ProductFilter } from "./product-filter";
+import { ProductTable } from "./product-table";
+import { ProductPagination } from "./product-pagination";
 
 const PRODUCTS_PER_PAGE = 10;
 
@@ -212,104 +207,40 @@ function ProductsContent() {
         </div>
 
         {showForm && (
-          <div className="card p-6 bg-green-50 border-green-200">
-            <h2 className="text-xl font-bold text-foreground mb-4">
-              {isEditing ? "Edit Product" : "Add New Product"}
-            </h2>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="label-text">Name *</label>
-                  <input
-                    type="text"
-                    {...register("name")}
-                    className={`input-field ${errors.name ? "border-red-500" : ""}`}
-                    placeholder="Product name"
-                  />
-                  {errors.name && (
-                    <p className="text-danger text-sm mt-1">
-                      {errors.name.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="label-text">SKU *</label>
-                  <input
-                    type="text"
-                    {...register("sku")}
-                    className={`input-field ${errors.sku ? "border-red-500" : ""}`}
-                    placeholder="Product SKU"
-                  />
-                  {errors.sku && (
-                    <p className="text-danger text-sm mt-1">
-                      {errors.sku.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="label-text">Price *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    {...register("price")}
-                    className={`input-field ${errors.price ? "border-red-500" : ""}`}
-                    placeholder="0.00"
-                  />
-                  {errors.price && (
-                    <p className="text-danger text-sm mt-1">
-                      {errors.price.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="label-text">Category *</label>
-                  <select
-                    {...register("categoryId")}
-                    title="Select product category"
-                    className={`input-field ${errors.categoryId ? "border-red-500" : ""}`}
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.categoryId ? (
-                    <p className="text-danger text-sm mt-1">
-                      {errors.categoryId.message}
-                    </p>
-                  ) : (
-                    categories.length === 0 && (
-                      <p className="text-xs text-red-500 mt-1">
-                        No categories found.
-                      </p>
-                    )
-                  )}
-                </div>
-                <div className="md:col-span-2">
-                  <label className="label-text">Description</label>
-                  <textarea
-                    {...register("description")}
-                    className="input-field h-20 resize-none"
-                    placeholder="Product description"
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={loadingProducts}
-              >
-                {loadingProducts
-                  ? "Saving..."
-                  : isEditing
-                    ? "Update Product"
-                    : "Save Product"}
-              </button>
-            </form>
-          </div>
+          <ProductForm
+            isEditing={isEditing}
+            loading={loadingProducts}
+            categories={categories}
+            onSubmit={onSubmit}
+            register={register}
+            handleSubmit={handleSubmit}
+            errors={errors}
+          />
+        )}
+
+        <ProductFilter
+          searchTerm={searchTerm}
+          categoryFilter={categoryFilter}
+          categories={categories}
+          onSearchChange={handleSearch}
+          onCategoryChange={handleCategoryFilter}
+          onReset={handleReset}
+        />
+
+        <ProductTable
+          products={products}
+          loading={loadingProducts}
+          onEdit={handleOpenEdit}
+          onDelete={handleDeleteProduct}
+        />
+
+        {pagination && pagination.totalPages > 1 && (
+          <ProductPagination
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            loading={loadingProducts}
+            onPageChange={handlePageChange}
+          />
         )}
 
         <div className="card p-6">
