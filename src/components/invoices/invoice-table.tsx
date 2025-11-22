@@ -37,6 +37,18 @@ export function InvoiceTable({
   onDelete,
   sendingEmailId,
 }: InvoiceTableProps) {
+  // Safety check: ensure invoices is an array
+  if (!Array.isArray(invoices)) {
+    console.error("InvoiceTable: invoices is not an array:", invoices);
+    return (
+      <div className="card">
+        <div className="text-center py-12">
+          <p className="text-red-600">Error loading invoices. Please refresh the page.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading && invoices.length === 0) {
     return (
       <div className="card">

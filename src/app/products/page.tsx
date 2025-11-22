@@ -9,6 +9,7 @@ import { Product, Category } from "@/lib/types";
 import { ProductFilter } from "@/components/products/product-filter";
 import { ProductTable } from "@/components/products/product-table";
 import { ProductPagination } from "@/components/products/product-pagination";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const PRODUCTS_PER_PAGE = 10;
 
@@ -110,17 +111,27 @@ function ProductsContent() {
     router.push(`/products/${product.id}/edit`);
   };
 
-  const handleDeleteProduct = async (id: string) => {
-    if (confirm("Are you sure you want to delete this product?")) {
-      await deleteProduct(id);
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; productId: string | null }>({  
+    isOpen: false,
+    productId: null,
+  });
 
-      getProducts({
-        page: currentPage,
-        limit: PRODUCTS_PER_PAGE,
-        search: searchTerm,
-        categoryId: categoryFilter,
-      });
-    }
+  const handleDeleteClick = (id: string) => {
+    setDeleteDialog({ isOpen: true, productId: id });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteDialog.productId) return;
+    
+    await deleteProduct(deleteDialog.productId);
+    setDeleteDialog({ isOpen: false, productId: null });
+
+    getProducts({
+      page: currentPage,
+      limit: PRODUCTS_PER_PAGE,
+      search: searchTerm,
+      categoryId: categoryFilter,
+    });
   };
 
   return (
@@ -156,7 +167,7 @@ function ProductsContent() {
           products={products}
           loading={loadingProducts}
           onEdit={handleOpenEdit}
-          onDelete={handleDeleteProduct}
+          onDelete={handleDeleteClick}
         />
 
         {pagination && pagination.totalPages > 1 && (
@@ -167,6 +178,16 @@ function ProductsContent() {
             onPageChange={handlePageChange}
           />
         )}
+
+        <ConfirmDialog
+          isOpen={deleteDialog.isOpen}
+          onClose={() => setDeleteDialog({ isOpen: false, productId: null })}
+          onConfirm={handleConfirmDelete}
+          title="Delete Product"
+          message="Are you sure you want to delete this product? This action cannot be undone."
+          confirmText="Delete"
+          variant="danger"
+        />
       </div>
     </DashboardLayout>
   );

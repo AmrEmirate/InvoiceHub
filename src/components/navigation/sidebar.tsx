@@ -41,7 +41,7 @@ export default function Sidebar({
       <aside
         className={`${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        } fixed md:relative md:translate-x-0 left-0 top-0 z-50 w-64 h-screen bg-primary text-white transition-transform duration-300 overflow-hidden flex flex-col md:transition-none`}
+        } fixed left-0 top-0 z-50 w-64 h-screen bg-primary text-white transition-transform duration-300 flex flex-col md:translate-x-0 md:sticky md:transition-none`}
       >
         <div className="p-6 border-b border-primary-light flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -61,7 +61,7 @@ export default function Sidebar({
           </button>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + "/");

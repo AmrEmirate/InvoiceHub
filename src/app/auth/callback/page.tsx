@@ -12,7 +12,20 @@ function GoogleCallback() {
   useEffect(() => {
     const token = searchParams.get("token");
     const userParam = searchParams.get("user");
+    const newUser = searchParams.get("newUser");
+    const googleEmail = searchParams.get("googleEmail");
+    const googleName = searchParams.get("googleName");
 
+    // Handle new Google users - redirect to signup page
+    if (newUser === "true" && googleEmail && googleName) {
+      toast.info("Please complete your registration");
+      router.push(
+        `/signup?googleEmail=${googleEmail}&googleName=${googleName}`
+      );
+      return;
+    }
+
+    // Handle existing users - normal login flow
     if (token && userParam) {
       try {
         const user: User = JSON.parse(decodeURIComponent(userParam));

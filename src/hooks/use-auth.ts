@@ -141,6 +141,34 @@ export function useAuth() {
     [router],
   );
 
+  const googleSignup = useCallback(
+    async (data: { email: string; name: string; company: string }) => {
+      setLoading(true);
+      try {
+        const res = await apiHelper.post<ApiResponse<AuthResponse>>(
+          "/auth/google-signup",
+          data
+        );
+
+        localStorage.setItem("authToken", res.data.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.data.user));
+
+        setUser(res.data.data.user);
+
+        toast.success("Registration successful!");
+        router.push("/dashboard");
+      } catch (error: any) {
+        const msg =
+          error.response?.data?.message || "Google signup failed";
+        toast.error("Error", { description: msg });
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [router]
+  );
+
   return {
     user,
     loading,
@@ -150,5 +178,6 @@ export function useAuth() {
     getProfile,
     updateProfile,
     setPassword,
+    googleSignup,
   };
 }

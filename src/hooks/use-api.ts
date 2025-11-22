@@ -21,22 +21,23 @@ export function useApi<T, U = Partial<T>>(endpoint: string) {
     async (params?: any) => {
       setLoading(true);
       try {
-        const res = await apiHelper.get<ApiResponse<PaginatedResponse<T>>>(
+        const res = await apiHelper.get<ApiResponse<any>>(
           endpoint,
           { params },
         );
 
-        const responseData = res.data.data;
-
-        if (responseData && responseData.data) {
-          setData(responseData.data);
+        // Check if response has meta (pagination enabled)
+        if (res.data.meta) {
+          // Paginated response: data is array, meta contains pagination info
+          setData(res.data.data);
           setPagination({
-            totalItems: responseData.totalItems,
-            totalPages: responseData.totalPages,
-            currentPage: responseData.currentPage,
+            totalItems: res.data.meta.total,
+            totalPages: res.data.meta.totalPages,
+            currentPage: res.data.meta.page,
           });
-          return responseData;
+          return res.data.data; // Return the array, not the full response
         } else {
+          // Non-paginated response: data is directly an array
           setData(res.data.data as any);
           setPagination(null);
           return res.data.data;

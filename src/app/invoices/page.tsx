@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { InvoiceFilter } from "@/components/invoices/invoice-filter";
 import { InvoiceTable } from "@/components/invoices/invoice-table";
 import { InvoicePagination } from "@/components/invoices/invoice-pagination";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const INVOICES_PER_PAGE = 10;
 
@@ -108,11 +109,21 @@ function InvoicesContent() {
     getAll(params);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this invoice?")) {
-      await remove(id);
-      refreshCurrentPage();
-    }
+  const [deleteDialog, setDeleteDialog] = useState< {isOpen: boolean; invoiceId: string | null }>({  
+    isOpen: false,
+    invoiceId: null,
+  });
+
+  const handleDeleteClick = (id: string) => {
+    setDeleteDialog({ isOpen: true, invoiceId: id });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteDialog.invoiceId) return;
+    
+    await remove(deleteDialog.invoiceId);
+    setDeleteDialog({ isOpen: false, invoiceId: null });
+    refreshCurrentPage();
   };
 
   const handleStatusUpdate = async (id: string, newStatus: InvoiceStatus) => {
@@ -167,7 +178,7 @@ function InvoicesContent() {
           loading={loading}
           onStatusUpdate={handleStatusUpdate}
           onSendEmail={handleSendEmail}
-          onDelete={handleDelete}
+          onDelete={handleDeleteClick}
           sendingEmailId={sendingEmailId}
         />
 
@@ -179,6 +190,16 @@ function InvoicesContent() {
             onPageChange={handlePageChange}
           />
         )}
+
+        <ConfirmDialog
+          isOpen={deleteDialog.isOpen}
+          onClose={() => setDeleteDialog({ isOpen: false, invoiceId: null })}
+          onConfirm={handleConfirmDelete}
+          title="Delete Invoice"
+          message="Are you sure you want to delete this invoice? This action cannot be undone."
+          confirmText="Delete"
+          variant="danger"
+        />
       </div>
     </DashboardLayout>
   );

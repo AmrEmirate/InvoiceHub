@@ -8,6 +8,7 @@ import { useApi } from "@/hooks/use-api";
 import { Client } from "@/lib/types";
 import { ClientList } from "@/components/clients/client-list";
 import { ClientPagination } from "@/components/clients/client-pagination";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const CLIENTS_PER_PAGE = 6;
 
@@ -75,16 +76,26 @@ function ClientsContent() {
     router.push(`/clients/${client.id}/edit`);
   };
 
-  const handleDeleteClient = async (id: string) => {
-    if (confirm("Are you sure you want to delete this client?")) {
-      await remove(id);
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; clientId: string | null }>({  
+    isOpen: false,
+    clientId: null,
+  });
 
-      getAll({
-        search: searchTerm,
-        page: currentPage,
-        limit: CLIENTS_PER_PAGE,
-      });
-    }
+  const handleDeleteClick = (id: string) => {
+    setDeleteDialog({ isOpen: true, clientId: id });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteDialog.clientId) return;
+    
+    await remove(deleteDialog.clientId);
+    setDeleteDialog({ isOpen: false, clientId: null });
+
+    getAll({
+      search: searchTerm,
+      page: currentPage,
+      limit: CLIENTS_PER_PAGE,
+    });
   };
 
   return (
@@ -118,7 +129,7 @@ function ClientsContent() {
             clients={clients}
             loading={loading}
             onEdit={handleOpenEdit}
-            onDelete={handleDeleteClient}
+            onDelete={handleDeleteClick}
             isEmpty={clients.length === 0}
           />
         </div>
@@ -128,6 +139,16 @@ function ClientsContent() {
           totalPages={pagination?.totalPages || 1}
           loading={loading}
           onPageChange={handlePageChange}
+        />
+
+        <ConfirmDialog
+          isOpen={deleteDialog.isOpen}
+          onClose={() => setDeleteDialog({ isOpen: false, clientId: null })}
+          onConfirm={handleConfirmDelete}
+          title="Delete Client"
+          message="Are you sure you want to delete this client? This action cannot be undone."
+          confirmText="Delete"
+          variant="danger"
         />
       </div>
     </DashboardLayout>

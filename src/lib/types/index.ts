@@ -92,6 +92,12 @@ export interface Invoice {
 export interface ApiResponse<T> {
   message: string;
   data: T;
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export interface AuthResponse {
