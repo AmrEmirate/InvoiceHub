@@ -42,9 +42,9 @@ export default function RecentInvoices({ invoices }: RecentInvoicesProps) {
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-semibold text-foreground text-sm">
-                  ${Number(invoice.totalAmount).toLocaleString()}
-                </p>
+                    <p className="font-semibold text-foreground">
+                      Rp {Number(invoice.totalAmount).toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </p>
                 <span
                   className={`text-xs font-medium px-2 py-1 rounded ${getStatusColor(invoice.status)}`}
                 >

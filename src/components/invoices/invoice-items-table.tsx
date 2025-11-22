@@ -19,9 +19,9 @@ export function TotalCalculator({
   );
 
   return (
-    <div className="flex justify-between text-lg font-bold text-foreground">
-      <span>Grand Total</span>
-      <span>${total.toFixed(2)}</span>
+    <div className="flex justify-between items-center px-4 py-3 bg-neutral-50 border-t border-neutral-200">
+      <span className="font-semibold text-lg">Total</span>
+      <span className="font-bold text-xl">Rp {total.toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
     </div>
   );
 }
@@ -37,8 +37,10 @@ export function LineTotal({
     control,
     name: `items.${index}`,
   });
-  const total = (item.quantity || 0) * (item.price || 0);
-  return <>${total.toFixed(2)}</>;
+  const lineTotal = (item.quantity || 0) * (item.price || 0);
+  return (
+    <span className="font-medium">Rp {lineTotal.toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+  );
 }
 
 interface InvoiceItemsTableProps {

@@ -48,7 +48,7 @@ export default function InvoiceChart({ data }: { data: ChartDataPoint[] }) {
           <YAxis
             stroke="#64748b"
             fontSize={12}
-            tickFormatter={(value) => `$${value / 1000}k`}
+            tickFormatter={(value) => `Rp ${(value / 1000000).toFixed(1)}M`}
           />
           <Tooltip
             contentStyle={{
@@ -57,7 +57,7 @@ export default function InvoiceChart({ data }: { data: ChartDataPoint[] }) {
               borderRadius: "8px",
             }}
             formatter={(value: any) => [
-              `$${Number(value).toLocaleString()}`,
+              `Rp ${Number(value).toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
               "Revenue",
             ]}
           />

@@ -69,7 +69,7 @@ export function ProductTable({
                 </td>
                 <td className="px-6 py-4 text-neutral-600">{product.sku}</td>
                 <td className="px-6 py-4 text-neutral-600">
-                  ${Number(product.price).toFixed(2)}
+                  Rp {Number(product.price).toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </td>
                 <td className="px-6 py-4 text-neutral-600">
                   {product.category?.name || "Uncategorized"}

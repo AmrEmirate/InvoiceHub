@@ -99,7 +99,7 @@ export function InvoiceTable({
                   {new Date(invoice.dueDate).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 font-semibold">
-                  ${Number(invoice.totalAmount).toLocaleString()}
+                  Rp {Number(invoice.totalAmount).toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </td>
                 <td className="px-6 py-4">{getStatusBadge(invoice.status)}</td>
                 <td className="px-6 py-4 text-right">

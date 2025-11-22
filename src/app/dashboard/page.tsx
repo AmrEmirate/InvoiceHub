@@ -73,11 +73,11 @@ export default function DashboardPage() {
           <h2 className="text-xl font-bold text-foreground mb-2">
             Total Revenue
           </h2>
-          <p className="text-4xl font-bold text-accent">
-            {new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-            }).format(stats.totalRevenue)}
+              <p className="text-3xl font-bold text-foreground">
+                Rp {stats.totalRevenue.toLocaleString("id-ID", {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+            })}
           </p>
           <p className="text-neutral-600 text-sm mt-2">
             From {stats.paidInvoices} paid invoices
