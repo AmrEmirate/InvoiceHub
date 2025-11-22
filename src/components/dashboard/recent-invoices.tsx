@@ -5,6 +5,9 @@ interface RecentInvoicesProps {
 }
 
 export default function RecentInvoices({ invoices }: RecentInvoicesProps) {
+  // Ensure invoices is always an array to avoid runtime errors
+  const safeInvoices = Array.isArray(invoices) ? invoices : [];
+
   const getStatusColor = (status: InvoiceStatus) => {
     switch (status) {
       case InvoiceStatus.PAID:
@@ -25,10 +28,10 @@ export default function RecentInvoices({ invoices }: RecentInvoicesProps) {
         Recent Invoices
       </h2>
       <div className="space-y-3">
-        {invoices.length === 0 ? (
+        {safeInvoices.length === 0 ? (
           <p className="text-sm text-neutral-500">No recent invoices found.</p>
         ) : (
-          invoices.map((invoice) => (
+          safeInvoices.map((invoice) => (
             <div
               key={invoice.id}
               className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"
@@ -42,9 +45,9 @@ export default function RecentInvoices({ invoices }: RecentInvoicesProps) {
                 </p>
               </div>
               <div className="text-right">
-                    <p className="font-semibold text-foreground">
-                      Rp {Number(invoice.totalAmount).toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                    </p>
+                <p className="font-semibold text-foreground">
+                  Rp {Number(invoice.totalAmount).toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
                 <span
                   className={`text-xs font-medium px-2 py-1 rounded ${getStatusColor(invoice.status)}`}
                 >
