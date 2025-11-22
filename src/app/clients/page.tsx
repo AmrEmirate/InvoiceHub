@@ -6,13 +6,6 @@ import { Suspense, useState, useEffect } from "react";
 import DashboardLayout from "@/components/layouts/dashboard-layout";
 import { useApi } from "@/hooks/use-api";
 import { Client } from "@/lib/types";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  clientSchema,
-  ClientFormData,
-  ClientForm,
-} from "@/components/clients/client-form";
 import { ClientList } from "@/components/clients/client-list";
 import { ClientPagination } from "@/components/clients/client-pagination";
 
@@ -27,10 +20,8 @@ function ClientsContent() {
     loading,
     pagination,
     getAll,
-    create,
-    update,
     remove,
-  } = useApi<Client, ClientFormData>("clients");
+  } = useApi<Client>("clients");
 
   const [searchTerm, setSearchTerm] = useState(
     searchParams.get("search") || "",
@@ -38,27 +29,6 @@ function ClientsContent() {
   const [currentPage, setCurrentPage] = useState(
     Number(searchParams.get("page")) || 1,
   );
-
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    reset,
-    formState: { errors },
-  } = useForm<ClientFormData>({
-    resolver: zodResolver(clientSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      address: "",
-      paymentPreferences: "",
-    },
-  });
 
   useEffect(() => {
     getAll({
@@ -97,52 +67,12 @@ function ClientsContent() {
     updateQueryParams(newPage, searchTerm);
   };
 
-  const handleCloseForm = () => {
-    setShowAddForm(false);
-    reset({
-      name: "",
-      email: "",
-      phone: "",
-      address: "",
-      paymentPreferences: "",
-    });
-    setIsEditing(false);
-    setSelectedId(null);
-  };
   const handleOpenAdd = () => {
-    reset({
-      name: "",
-      email: "",
-      phone: "",
-      address: "",
-      paymentPreferences: "",
-    });
-    setIsEditing(false);
-    setSelectedId(null);
-    setShowAddForm(true);
+    router.push("/clients/create");
   };
+
   const handleOpenEdit = (client: Client) => {
-    setIsEditing(true);
-    setSelectedId(client.id);
-    setValue("name", client.name);
-    setValue("email", client.email);
-    setValue("phone", client.phone || "");
-    setValue("address", client.address || "");
-    setValue("paymentPreferences", client.paymentPreferences || "");
-    setShowAddForm(true);
-  };
-
-  const onSubmit = async (data: ClientFormData) => {
-    try {
-      if (isEditing && selectedId) {
-        await update(selectedId, data);
-      } else {
-        await create(data);
-      }
-      handleCloseForm();
-
-      handlePageChange(1);
-    } catch (error) {}
+    router.push(`/clients/${client.id}/edit`);
   };
 
   const handleDeleteClient = async (id: string) => {
@@ -166,23 +96,12 @@ function ClientsContent() {
             <p className="text-neutral-600">Manage your client information</p>
           </div>
           <button
-            onClick={showAddForm ? handleCloseForm : handleOpenAdd}
+            onClick={handleOpenAdd}
             className="btn-primary"
           >
-            {showAddForm ? "Cancel" : "+ Add Client"}
+            + Add Client
           </button>
         </div>
-
-        {showAddForm && (
-          <ClientForm
-            isEditing={isEditing}
-            loading={loading}
-            onSubmit={onSubmit}
-            register={register}
-            handleSubmit={handleSubmit}
-            errors={errors}
-          />
-        )}
 
         <div className="card p-6">
           <input

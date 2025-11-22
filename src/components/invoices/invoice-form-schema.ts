@@ -16,7 +16,7 @@ const invoiceItemSchema = z.object({
 
 export const invoiceSchema = z.object({
   clientId: z.string().min(1, "Client is required"),
-  invoiceNumber: z.string().min(1, "Invoice number is required"),
+  invoiceNumber: z.string().optional(),
   dueDate: z.string().min(1, "Due date is required"),
   status: z.nativeEnum(InvoiceStatus),
   notes: z.string().optional(),

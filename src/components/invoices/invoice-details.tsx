@@ -53,11 +53,13 @@ export function InvoiceDetails({
             id="invoiceNumber"
             type="text"
             {...register("invoiceNumber")}
-            className={`input-field ${
+            className={`input-field bg-gray-100 cursor-not-allowed ${
               errors.invoiceNumber ? "border-red-500" : ""
             }`}
-            placeholder="INV-001"
-            title="Invoice Number"
+            placeholder="Auto-generated"
+            readOnly
+            disabled
+            title="Invoice Number (Auto-generated)"
           />
           {errors.invoiceNumber && (
             <p className="text-danger text-sm mt-1">

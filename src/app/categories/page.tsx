@@ -7,15 +7,19 @@ import DashboardLayout from "@/components/layouts/dashboard-layout";
 import { useApi } from "@/hooks/use-api";
 import { Category } from "@/lib/types";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-
-const categorySchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters"),
-});
-
-type CategoryFormData = z.infer<typeof categorySchema>;
+export default function CategoriesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <CategoriesContent />
+    </Suspense>
+  );
+}
 
 function CategoriesContent() {
   const router = useRouter();
@@ -25,28 +29,12 @@ function CategoriesContent() {
     data: categories,
     loading,
     getAll,
-    create,
-    update,
     remove,
-  } = useApi<Category, CategoryFormData>("categories");
+  } = useApi<Category>("categories");
 
   const [searchTerm, setSearchTerm] = useState(
     searchParams.get("search") || "",
   );
-  const [showForm, setShowForm] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    reset,
-    formState: { errors },
-  } = useForm<CategoryFormData>({
-    resolver: zodResolver(categorySchema),
-    defaultValues: { name: "" },
-  });
 
   useEffect(() => {
     getAll({ search: searchTerm });
@@ -61,35 +49,11 @@ function CategoriesContent() {
   };
 
   const handleOpenAdd = () => {
-    reset({ name: "" });
-    setIsEditing(false);
-    setSelectedId(null);
-    setShowForm(true);
+    router.push("/categories/create");
   };
 
   const handleOpenEdit = (category: Category) => {
-    setValue("name", category.name);
-    setIsEditing(true);
-    setSelectedId(category.id);
-    setShowForm(true);
-  };
-
-  const handleCloseForm = () => {
-    setShowForm(false);
-    reset({ name: "" });
-    setIsEditing(false);
-    setSelectedId(null);
-  };
-
-  const onSubmit = async (data: CategoryFormData) => {
-    try {
-      if (isEditing && selectedId) {
-        await update(selectedId, data);
-      } else {
-        await create(data);
-      }
-      handleCloseForm();
-    } catch (error) {}
+    router.push(`/categories/${category.id}/edit`);
   };
 
   const handleDelete = async (id: string) => {
@@ -107,47 +71,12 @@ function CategoriesContent() {
             <p className="text-neutral-600">Manage product categories</p>
           </div>
           <button
-            onClick={showForm ? handleCloseForm : handleOpenAdd}
+            onClick={handleOpenAdd}
             className="btn-primary"
           >
-            {showForm ? "Cancel" : "+ Add Category"}
+            + Add Category
           </button>
         </div>
-
-        {showForm && (
-          <div className="card p-6 bg-blue-50 border-blue-200 max-w-xl">
-            <h2 className="text-lg font-bold text-foreground mb-4">
-              {isEditing ? "Edit Category" : "New Category"}
-            </h2>
-
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="flex gap-4 items-start"
-            >
-              <div className="flex-1">
-                <label className="label-text">Category Name *</label>
-                <input
-                  type="text"
-                  {...register("name")}
-                  className={`input-field w-full ${errors.name ? "border-red-500" : ""}`}
-                  placeholder="e.g. Services, Electronics"
-                />
-                {errors.name && (
-                  <p className="text-danger text-sm mt-1">
-                    {errors.name.message}
-                  </p>
-                )}
-              </div>
-              <button
-                type="submit"
-                className="btn-primary whitespace-nowrap mt-6"
-                disabled={loading}
-              >
-                {loading ? "Saving..." : isEditing ? "Update" : "Save"}
-              </button>
-            </form>
-          </div>
-        )}
 
         <div className="card p-6">
           <input
@@ -219,19 +148,5 @@ function CategoriesContent() {
         </div>
       </div>
     </DashboardLayout>
-  );
-}
-
-export default function CategoriesPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          Loading...
-        </div>
-      }
-    >
-      <CategoriesContent />
-    </Suspense>
   );
 }

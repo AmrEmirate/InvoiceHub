@@ -40,11 +40,7 @@ export default function InvoiceForm() {
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
       clientId: "",
-      invoiceNumber: `INV-${new Date().getFullYear()}-${Math.floor(
-        Math.random() * 1000,
-      )
-        .toString()
-        .padStart(3, "0")}`,
+      invoiceNumber: "",
       dueDate: "",
       status: InvoiceStatus.DRAFT,
       notes: "",
@@ -87,6 +83,10 @@ export default function InvoiceForm() {
         productId: item.productId || undefined,
       })),
     };
+
+    if (!cleanData.invoiceNumber) {
+      delete cleanData.invoiceNumber;
+    }
 
     try {
       await createInvoice(cleanData);
