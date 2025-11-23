@@ -1,4 +1,5 @@
 import { Invoice, InvoiceStatus } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils/formatNumber";
 
 interface InvoiceTableProps {
   invoices: Invoice[];
@@ -77,7 +78,7 @@ export function InvoiceTable({
                 <td className="px-6 py-4 text-neutral-600">{invoice.client?.name || "Unknown Client"}</td>
                 <td className="px-6 py-4 text-neutral-600">{new Date(invoice.dueDate).toLocaleDateString()}</td>
                 <td className="px-6 py-4 font-semibold">
-                  Rp {Number(invoice.totalAmount).toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {formatCurrency(invoice.totalAmount)}
                 </td>
                 <td className="px-6 py-4">{getStatusBadge(invoice.status)}</td>
                 <td className="px-6 py-4 text-right">

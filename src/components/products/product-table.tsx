@@ -1,4 +1,5 @@
 import { Product } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils/formatNumber";
 
 interface ProductTableProps {
   products: Product[];
@@ -69,7 +70,7 @@ export function ProductTable({
                 </td>
                 <td className="px-6 py-4 text-neutral-600">{product.sku}</td>
                 <td className="px-6 py-4 text-neutral-600">
-                  Rp {Number(product.price).toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {formatCurrency(product.price)}
                 </td>
                 <td className="px-6 py-4 text-neutral-600">
                   {product.category?.name || "Uncategorized"}

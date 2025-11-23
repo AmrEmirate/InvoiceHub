@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { ChartDataPoint } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils/formatNumber";
 
 const BarChart = dynamic(() => import("recharts").then((mod) => mod.BarChart), {
   ssr: false,
@@ -61,7 +62,7 @@ export default function InvoiceChart({ data }: { data: ChartDataPoint[] }) {
               borderRadius: "8px",
             }}
             formatter={(value: any) => [
-              `Rp ${Number(value).toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+              formatCurrency(value),
               "Revenue",
             ]}
           />
