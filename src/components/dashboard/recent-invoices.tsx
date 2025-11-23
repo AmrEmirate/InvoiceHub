@@ -1,4 +1,5 @@
 import { Invoice, InvoiceStatus } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils/formatNumber";
 
 interface RecentInvoicesProps {
   invoices: Invoice[];
@@ -46,7 +47,7 @@ export default function RecentInvoices({ invoices }: RecentInvoicesProps) {
               </div>
               <div className="text-right">
                 <p className="font-semibold text-foreground">
-                  Rp {Number(invoice.totalAmount).toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {formatCurrency(invoice.totalAmount)}
                 </p>
                 <span
                   className={`text-xs font-medium px-2 py-1 rounded ${getStatusColor(invoice.status)}`}

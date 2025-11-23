@@ -23,6 +23,7 @@ export default function CreateProductPage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -40,8 +41,14 @@ export default function CreateProductPage() {
       await createProduct(data);
       toast.success("Product created successfully");
       router.push("/products");
-    } catch (error) {
-      // Error is handled by useApi
+    } catch (error: any) {
+      const message = error.response?.data?.message || "";
+      if (message.toLowerCase().includes("sku")) {
+        setError("sku", {
+          type: "manual",
+          message: "This SKU is already in use",
+        });
+      }
     }
   };
 

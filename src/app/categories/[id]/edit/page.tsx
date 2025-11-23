@@ -23,12 +23,11 @@ export default function EditCategoryPage() {
 
   const { 
     data: categories, 
+    item: category,
     getOne: getCategory, 
     update: updateCategory, 
     loading 
   } = useApi<Category, CategoryFormData>("categories");
-
-  const category = categories.find(c => c.id === id);
 
   useEffect(() => {
     if (id) {
@@ -40,6 +39,7 @@ export default function EditCategoryPage() {
     register,
     handleSubmit,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
@@ -57,8 +57,14 @@ export default function EditCategoryPage() {
       await updateCategory(id, data);
       toast.success("Category updated successfully");
       router.push("/categories");
-    } catch (error) {
-      // Error is handled by useApi
+    } catch (error: any) {
+      const message = error.response?.data?.message || "";
+      if (message.toLowerCase().includes("name")) {
+        setError("name", {
+          type: "manual",
+          message: "This category name is already in use",
+        });
+      }
     }
   };
 

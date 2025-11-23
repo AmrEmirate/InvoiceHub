@@ -20,7 +20,7 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
       <div className="py-3 border-t border-neutral-200 mb-4">
         <p className="text-sm text-neutral-600">
           <span className="font-medium text-foreground">
-            {client.invoices?.length || 0}
+            {client._count?.invoices || 0}
           </span>{" "}
           invoices
         </p>

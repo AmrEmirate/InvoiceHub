@@ -28,6 +28,9 @@ export interface Client {
   userId: string;
   createdAt: string;
   updatedAt: string;
+  _count?: {
+    invoices: number;
+  };
 }
 
 export interface Category {

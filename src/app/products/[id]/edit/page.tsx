@@ -18,6 +18,7 @@ export default function EditProductPage() {
 
   const { 
     data: products, 
+    item: product,
     getOne: getProduct, 
     update: updateProduct, 
     loading: loadingProduct 
@@ -25,11 +26,7 @@ export default function EditProductPage() {
   
   const { data: categories, getAll: getCategories } = useApi<Category>("categories");
 
-  // We need to find the product from the list or fetch it
-  // Since useApi is designed for lists mostly, we might need to rely on the list being populated or fetch one
-  // Looking at useApi implementation (inferred), it likely has getOne.
-  
-  const product = products.find(p => p.id === id);
+  // We fetch the product using getOne which updates the 'item' state
 
   useEffect(() => {
     getCategories();
@@ -42,6 +39,7 @@ export default function EditProductPage() {
     register,
     handleSubmit,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -69,8 +67,14 @@ export default function EditProductPage() {
       await updateProduct(id, data);
       toast.success("Product updated successfully");
       router.push("/products");
-    } catch (error) {
-      // Error is handled by useApi
+    } catch (error: any) {
+      const message = error.response?.data?.message || "";
+      if (message.toLowerCase().includes("sku")) {
+        setError("sku", {
+          type: "manual",
+          message: "This SKU is already in use",
+        });
+      }
     }
   };
 

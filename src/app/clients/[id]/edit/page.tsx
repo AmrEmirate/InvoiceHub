@@ -18,12 +18,11 @@ export default function EditClientPage() {
 
   const { 
     data: clients, 
+    item: client,
     getOne: getClient, 
     update: updateClient, 
     loading 
   } = useApi<Client, ClientFormData>("clients");
-
-  const client = clients.find(c => c.id === id);
 
   useEffect(() => {
     if (id) {

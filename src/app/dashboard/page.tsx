@@ -8,6 +8,7 @@ import { useDashboard } from "@/hooks/use-dashboard";
 import StatCard from "@/components/dashboard/stat-card";
 import InvoiceChart from "@/components/dashboard/invoice-chart";
 import RecentInvoices from "@/components/dashboard/recent-invoices";
+import { formatCurrency } from "@/lib/utils/formatNumber";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -74,10 +75,7 @@ export default function DashboardPage() {
             Total Revenue
           </h2>
               <p className="text-3xl font-bold text-foreground">
-                Rp {stats.totalRevenue.toLocaleString("id-ID", {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-            })}
+                {formatCurrency(stats.totalRevenue)}
           </p>
           <p className="text-neutral-600 text-sm mt-2">
             From {stats.paidInvoices} paid invoices

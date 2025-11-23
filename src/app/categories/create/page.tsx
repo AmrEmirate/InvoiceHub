@@ -22,6 +22,7 @@ export default function CreateCategoryPage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
@@ -33,8 +34,14 @@ export default function CreateCategoryPage() {
       await createCategory(data);
       toast.success("Category created successfully");
       router.push("/categories");
-    } catch (error) {
-      // Error is handled by useApi
+    } catch (error: any) {
+      const message = error.response?.data?.message || "";
+      if (message.toLowerCase().includes("name")) {
+        setError("name", {
+          type: "manual",
+          message: "This category name is already in use",
+        });
+      }
     }
   };
 

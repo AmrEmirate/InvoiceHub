@@ -10,7 +10,7 @@ interface ConfirmDialogProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  variant?: "danger" | "info";
+  variant?: "danger" | "info" | "success";
   loading?: boolean;
 }
 
@@ -59,6 +59,18 @@ export function ConfirmDialog({
     }
   };
 
+  const getButtonColor = () => {
+    switch (variant) {
+      case "danger":
+        return "bg-danger hover:bg-red-700";
+      case "success":
+        return "bg-green-600 hover:bg-green-700";
+      case "info":
+      default:
+        return "bg-accent hover:bg-accent-dark";
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn"
@@ -87,11 +99,7 @@ export function ConfirmDialog({
           <button
             onClick={handleConfirm}
             disabled={loading}
-            className={`px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-              variant === "danger"
-                ? "bg-danger hover:bg-red-700"
-                : "bg-accent hover:bg-accent-dark"
-            }`}
+            className={`px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${getButtonColor()}`}
           >
             {loading ? "Processing..." : confirmText}
           </button>

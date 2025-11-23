@@ -48,7 +48,11 @@ export default function InvoiceChart({ data }: { data: ChartDataPoint[] }) {
           <YAxis
             stroke="#64748b"
             fontSize={12}
-            tickFormatter={(value) => `Rp ${(value / 1000000).toFixed(1)}M`}
+            tickFormatter={(value) => {
+              if (value >= 1000000) return `Rp ${(value / 1000000).toFixed(1)}M`;
+              if (value >= 1000) return `Rp ${(value / 1000).toFixed(1)}K`;
+              return `Rp ${value}`;
+            }}
           />
           <Tooltip
             contentStyle={{
