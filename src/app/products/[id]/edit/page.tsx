@@ -26,7 +26,7 @@ export default function EditProductPage() {
   
   const { data: categories, getAll: getCategories } = useApi<Category>("categories");
 
-  // We fetch the product using getOne which updates the 'item' state
+
 
   useEffect(() => {
     getCategories();

@@ -25,7 +25,7 @@ export function ConfirmDialog({
   variant = "info",
   loading = false,
 }: ConfirmDialogProps) {
-  // Handle ESC key
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen && !loading) {
@@ -35,7 +35,7 @@ export function ConfirmDialog({
 
     if (isOpen) {
       document.addEventListener("keydown", handleEscape);
-      // Prevent body scroll when modal is open
+
       document.body.style.overflow = "hidden";
     }
 
@@ -77,17 +77,17 @@ export function ConfirmDialog({
       onClick={handleBackdropClick}
     >
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full animate-scaleIn">
-        {/* Header */}
+
         <div className="p-6 border-b border-neutral-200">
           <h3 className="text-xl font-bold text-foreground">{title}</h3>
         </div>
 
-        {/* Body */}
+
         <div className="p-6">
           <p className="text-neutral-600 leading-relaxed">{message}</p>
         </div>
 
-        {/* Footer */}
+
         <div className="p-6 bg-neutral-50 rounded-b-xl flex gap-3 justify-end border-t border-neutral-200">
           <button
             onClick={onClose}

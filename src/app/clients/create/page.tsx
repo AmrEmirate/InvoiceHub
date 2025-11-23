@@ -35,7 +35,7 @@ export default function CreateClientPage() {
       toast.success("Client created successfully");
       router.push("/clients");
     } catch (error) {
-      // Error is handled by useApi
+
     }
   };
 

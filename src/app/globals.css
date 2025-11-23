@@ -185,7 +185,7 @@ body {
     Cantarell, sans-serif;
 }
 
-/* Custom animations for modals and dialogs */
+
 @keyframes fadeIn {
   from {
     opacity: 0;

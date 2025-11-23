@@ -34,7 +34,7 @@ export function InvoiceTable({
   onDelete,
   sendingEmailId,
 }: InvoiceTableProps) {
-  // Ensure invoices is always an array
+
   const safeInvoices = Array.isArray(invoices) ? invoices : [];
 
   if (loading && safeInvoices.length === 0) {

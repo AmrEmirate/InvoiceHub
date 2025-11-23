@@ -6,7 +6,7 @@ interface RecentInvoicesProps {
 }
 
 export default function RecentInvoices({ invoices }: RecentInvoicesProps) {
-  // Ensure invoices is always an array to avoid runtime errors
+
   const safeInvoices = Array.isArray(invoices) ? invoices : [];
 
   const getStatusColor = (status: InvoiceStatus) => {

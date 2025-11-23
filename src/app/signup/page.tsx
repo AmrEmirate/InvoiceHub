@@ -20,7 +20,7 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [isGoogleSignup, setIsGoogleSignup] = useState(false);
 
-  // Pre-fill Google data if redirected from Google OAuth
+
   useEffect(() => {
     const googleEmail = searchParams.get("googleEmail");
     const googleName = searchParams.get("googleName");
@@ -52,7 +52,7 @@ export default function SignupPage() {
     }
 
     try {
-      // Use googleSignup if user came from Google OAuth
+
       if (isGoogleSignup) {
         await googleSignup({
           email: formData.email,

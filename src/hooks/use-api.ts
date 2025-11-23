@@ -26,16 +26,12 @@ export function useApi<T, U = Partial<T>>(endpoint: string) {
           { params },
         );
 
-        // Check if response has meta (pagination enabled)
-        // Check if response has meta (pagination enabled)
-        // The backend returns { data: { data: [], meta: {} } } for paginated responses
-        // or { data: [], meta: {} } if the type definition was followed strictly, 
-        // but based on repository it returns { data, meta } inside the main data field.
+
         
         const responseData = res.data.data as any;
         
         if (responseData && responseData.meta) {
-          // Paginated response: data.data is array, data.meta contains pagination info
+
           setData(responseData.data);
           setPagination({
             totalItems: responseData.meta.total,
@@ -44,7 +40,7 @@ export function useApi<T, U = Partial<T>>(endpoint: string) {
           });
           return responseData.data; 
         } else if (res.data.meta) {
-           // Fallback if meta is at top level
+
           setData(res.data.data as any);
           setPagination({
             totalItems: res.data.meta.total,
@@ -53,7 +49,7 @@ export function useApi<T, U = Partial<T>>(endpoint: string) {
           });
           return res.data.data;
         } else {
-          // Non-paginated response: data is directly an array
+
           setData(res.data.data as any);
           setPagination(null);
           return res.data.data;

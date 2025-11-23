@@ -62,7 +62,7 @@ export default function EditClientPage() {
       toast.success("Client updated successfully");
       router.push("/clients");
     } catch (error) {
-      // Error is handled by useApi
+
     }
   };
 

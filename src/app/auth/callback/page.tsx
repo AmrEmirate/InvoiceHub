@@ -16,7 +16,7 @@ function GoogleCallback() {
     const googleEmail = searchParams.get("googleEmail");
     const googleName = searchParams.get("googleName");
 
-    // Handle new Google users - redirect to signup page
+
     if (newUser === "true" && googleEmail && googleName) {
       toast.info("Please complete your registration");
       router.push(
@@ -25,7 +25,7 @@ function GoogleCallback() {
       return;
     }
 
-    // Handle existing users - normal login flow
+
     if (token && userParam) {
       try {
         const user: User = JSON.parse(decodeURIComponent(userParam));
