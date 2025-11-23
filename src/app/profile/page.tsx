@@ -173,7 +173,12 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          onSubmit={handleSubmit(onSubmit, (errors) => {
+            toast.error("Please fill in all required fields");
+          })}
+          className="space-y-6"
+        >
           <AvatarUpload
             user={user}
             previewUrl={previewUrl}

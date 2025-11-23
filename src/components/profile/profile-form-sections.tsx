@@ -14,7 +14,7 @@ export const profileSchema = z.object({
   country: z.string().optional(),
   taxId: z.string().optional(),
   bankAccount: z.string().optional(),
-  avatar: z.string().url().optional(),
+  avatar: z.union([z.string().url(), z.literal("")]).optional(),
 });
 
 export type ProfileFormData = z.infer<typeof profileSchema>;
