@@ -26,8 +26,16 @@ export default function TopBar({ onToggleSidebar }: TopBarProps) {
           </p>
           <p className="text-xs text-neutral-600">{user?.email}</p>
         </div>
-        <div className="w-10 h-10 flex-shrink-0 rounded-full bg-accent flex items-center justify-center text-white font-bold text-sm">
-          {user?.name?.charAt(0).toUpperCase() || "U"}
+        <div className="w-10 h-10 flex-shrink-0 rounded-full bg-accent flex items-center justify-center text-white font-bold text-sm overflow-hidden border border-neutral-200">
+          {user?.avatar ? (
+            <img
+              src={user.avatar}
+              alt={user.name || "User"}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            user?.name?.charAt(0).toUpperCase() || "U"
+          )}
         </div>
       </div>
     </div>

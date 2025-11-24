@@ -20,7 +20,7 @@ export function InvoiceDetails({
       <h3 className="text-lg font-bold mb-4 text-foreground">
         Invoice Details
       </h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div>
           <label htmlFor="clientId" className="label-text">
             Client *
@@ -87,7 +87,7 @@ export function InvoiceDetails({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
         <div>
           <label htmlFor="status" className="label-text">
             Status
