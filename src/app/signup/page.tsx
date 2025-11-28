@@ -1,17 +1,17 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { useSearchParams } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:2020/api";
 
-export default function SignupPage() {
+function SignupContent() {
   const { register, googleSignup, loading } = useAuth();
   const searchParams = useSearchParams();
-  
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -20,11 +20,10 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [isGoogleSignup, setIsGoogleSignup] = useState(false);
 
-
   useEffect(() => {
     const googleEmail = searchParams.get("googleEmail");
     const googleName = searchParams.get("googleName");
-    
+
     if (googleEmail && googleName) {
       setFormData({
         email: decodeURIComponent(googleEmail),
@@ -52,7 +51,6 @@ export default function SignupPage() {
     }
 
     try {
-
       if (isGoogleSignup) {
         await googleSignup({
           email: formData.email,
@@ -200,5 +198,19 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <SignupContent />
+    </Suspense>
   );
 }
