@@ -6,8 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { useSearchParams } from "next/navigation";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://invoice-hub-api.vercel.app/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 function SignupContent() {
   const { register, googleSignup, loading } = useAuth();

@@ -1,7 +1,6 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse } from "axios";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://invoice-hub-api.vercel.app/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const apiHelper: AxiosInstance = axios.create({
   baseURL: API_URL,

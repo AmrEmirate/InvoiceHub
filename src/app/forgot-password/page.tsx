@@ -5,8 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://invoice-hub-api.vercel.app/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");

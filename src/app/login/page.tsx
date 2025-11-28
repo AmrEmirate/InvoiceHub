@@ -5,8 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://invoice-hub-api.vercel.app/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function LoginPage() {
   const { login, loading } = useAuth();
