@@ -1,6 +1,7 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse } from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:2020/api";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://invoice-hub-api.vercel.app/api";
 
 const apiHelper: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -19,7 +20,7 @@ apiHelper.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error),
+  (error) => Promise.reject(error)
 );
 
 apiHelper.interceptors.response.use(
@@ -30,7 +31,7 @@ apiHelper.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  },
+  }
 );
 
 export default apiHelper;
