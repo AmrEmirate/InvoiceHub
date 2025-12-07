@@ -127,7 +127,9 @@ export function InvoiceItemsTable({
                   <input
                     type="number"
                     min="1"
-                    {...register(`items.${index}.quantity`)}
+                    {...register(`items.${index}.quantity`, {
+                      valueAsNumber: true,
+                    })}
                     className={`input-field text-sm ${
                       errors.items?.[index]?.quantity ? "border-red-500" : ""
                     }`}
@@ -251,7 +253,9 @@ export function InvoiceItemsTable({
                 <input
                   type="number"
                   min="1"
-                  {...register(`items.${index}.quantity`)}
+                  {...register(`items.${index}.quantity`, {
+                    valueAsNumber: true,
+                  })}
                   className={`input-field text-sm w-full ${
                     errors.items?.[index]?.quantity ? "border-red-500" : ""
                   }`}
