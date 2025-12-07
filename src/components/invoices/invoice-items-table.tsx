@@ -16,7 +16,7 @@ export function TotalCalculator({
 
   const total = items.reduce(
     (sum, item) => sum + (item.quantity || 0) * (item.price || 0),
-    0,
+    0
   );
 
   return (
@@ -39,9 +39,7 @@ export function LineTotal({
     name: `items.${index}`,
   });
   const lineTotal = (item.quantity || 0) * (item.price || 0);
-  return (
-    <span className="font-medium">{formatCurrency(lineTotal)}</span>
-  );
+  return <span className="font-medium">{formatCurrency(lineTotal)}</span>;
 }
 
 interface InvoiceItemsTableProps {
@@ -94,9 +92,7 @@ export function InvoiceItemsTable({
                 <td className="p-3 align-top">
                   <select
                     {...register(`items.${index}.productId`)}
-                    onChange={(e) =>
-                      onProductSelect(index, e.target.value)
-                    }
+                    onChange={(e) => onProductSelect(index, e.target.value)}
                     className="input-field text-sm"
                     aria-label="Select Product"
                     title="Select Product"
@@ -115,9 +111,7 @@ export function InvoiceItemsTable({
                     type="text"
                     {...register(`items.${index}.description`)}
                     className={`input-field text-sm ${
-                      errors.items?.[index]?.description
-                        ? "border-red-500"
-                        : ""
+                      errors.items?.[index]?.description ? "border-red-500" : ""
                     }`}
                     placeholder="Item description"
                     aria-label="Item Description"
@@ -135,9 +129,7 @@ export function InvoiceItemsTable({
                     min="1"
                     {...register(`items.${index}.quantity`)}
                     className={`input-field text-sm ${
-                      errors.items?.[index]?.quantity
-                        ? "border-red-500"
-                        : ""
+                      errors.items?.[index]?.quantity ? "border-red-500" : ""
                     }`}
                     placeholder="1"
                     aria-label="Quantity"
@@ -154,15 +146,16 @@ export function InvoiceItemsTable({
                     type="number"
                     min="0"
                     step="0.01"
-                    {...register(`items.${index}.price`)}
-                    className={`input-field text-sm ${
-                      errors.items?.[index]?.price
-                        ? "border-red-500"
-                        : ""
+                    {...register(`items.${index}.price`, {
+                      valueAsNumber: true,
+                    })}
+                    readOnly
+                    className={`input-field text-sm bg-neutral-100 text-neutral-500 cursor-not-allowed ${
+                      errors.items?.[index]?.price ? "border-red-500" : ""
                     }`}
                     placeholder="0.00"
                     aria-label="Price"
-                    title="Price"
+                    title="Price (Read-only)"
                   />
                   {errors.items?.[index]?.price && (
                     <p className="text-danger text-xs mt-1">
@@ -193,9 +186,14 @@ export function InvoiceItemsTable({
       {/* Mobile View: Cards */}
       <div className="lg:hidden space-y-4">
         {fields.map((field, index) => (
-          <div key={field.id} className="p-4 border border-neutral-200 rounded-lg bg-neutral-50 space-y-3">
+          <div
+            key={field.id}
+            className="p-4 border border-neutral-200 rounded-lg bg-neutral-50 space-y-3"
+          >
             <div className="flex justify-between items-start">
-              <h4 className="font-medium text-sm text-neutral-700">Item #{index + 1}</h4>
+              <h4 className="font-medium text-sm text-neutral-700">
+                Item #{index + 1}
+              </h4>
               {fields.length > 1 && (
                 <button
                   type="button"
@@ -208,7 +206,9 @@ export function InvoiceItemsTable({
             </div>
 
             <div>
-              <label className="text-xs font-medium text-neutral-500 mb-1 block">Product</label>
+              <label className="text-xs font-medium text-neutral-500 mb-1 block">
+                Product
+              </label>
               <select
                 {...register(`items.${index}.productId`)}
                 onChange={(e) => onProductSelect(index, e.target.value)}
@@ -225,7 +225,9 @@ export function InvoiceItemsTable({
             </div>
 
             <div>
-              <label className="text-xs font-medium text-neutral-500 mb-1 block">Description</label>
+              <label className="text-xs font-medium text-neutral-500 mb-1 block">
+                Description
+              </label>
               <input
                 type="text"
                 {...register(`items.${index}.description`)}
@@ -243,7 +245,9 @@ export function InvoiceItemsTable({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-neutral-500 mb-1 block">Qty</label>
+                <label className="text-xs font-medium text-neutral-500 mb-1 block">
+                  Qty
+                </label>
                 <input
                   type="number"
                   min="1"
@@ -255,13 +259,16 @@ export function InvoiceItemsTable({
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-neutral-500 mb-1 block">Price</label>
+                <label className="text-xs font-medium text-neutral-500 mb-1 block">
+                  Price
+                </label>
                 <input
                   type="number"
                   min="0"
                   step="0.01"
-                  {...register(`items.${index}.price`)}
-                  className={`input-field text-sm w-full ${
+                  {...register(`items.${index}.price`, { valueAsNumber: true })}
+                  readOnly
+                  className={`input-field text-sm w-full bg-neutral-100 text-neutral-500 cursor-not-allowed ${
                     errors.items?.[index]?.price ? "border-red-500" : ""
                   }`}
                   placeholder="0.00"
@@ -270,7 +277,9 @@ export function InvoiceItemsTable({
             </div>
 
             <div className="flex justify-between items-center pt-2 border-t border-neutral-200">
-              <span className="text-sm font-medium text-neutral-600">Line Total:</span>
+              <span className="text-sm font-medium text-neutral-600">
+                Line Total:
+              </span>
               <LineTotal control={control} index={index} />
             </div>
           </div>

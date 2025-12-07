@@ -21,7 +21,7 @@ export default function InvoiceForm() {
   const { data: clients, getAll: getClients } = useApi<Client>("clients");
   const { data: products, getAll: getProducts } = useApi<Product>("products");
   const { create: createInvoice, loading } = useApi<any, InvoiceFormData>(
-    "invoices",
+    "invoices"
   );
 
   useEffect(() => {
@@ -61,7 +61,11 @@ export default function InvoiceForm() {
     const selectedProduct = products.find((p) => p.id === productId);
     if (selectedProduct) {
       setValue(`items.${index}.description`, selectedProduct.name);
-      setValue(`items.${index}.price`, Number(selectedProduct.price));
+      setValue(`items.${index}.price`, Number(selectedProduct.price), {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      });
     }
   };
 
