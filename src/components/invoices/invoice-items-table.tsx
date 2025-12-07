@@ -15,7 +15,8 @@ export function TotalCalculator({
   });
 
   const total = items.reduce(
-    (sum, item) => sum + (item.quantity || 0) * (item.price || 0),
+    (sum, item) =>
+      sum + (Number(item.quantity) || 0) * (Number(item.price) || 0),
     0
   );
 
@@ -34,11 +35,17 @@ export function LineTotal({
   control: Control<InvoiceFormData>;
   index: number;
 }) {
-  const item = useWatch({
+  const quantity = useWatch({
     control,
-    name: `items.${index}`,
+    name: `items.${index}.quantity`,
   });
-  const lineTotal = (item.quantity || 0) * (item.price || 0);
+  const price = useWatch({
+    control,
+    name: `items.${index}.price`,
+  });
+
+  const lineTotal = (Number(quantity) || 0) * (Number(price) || 0);
+
   return <span className="font-medium">{formatCurrency(lineTotal)}</span>;
 }
 
