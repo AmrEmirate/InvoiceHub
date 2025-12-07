@@ -23,6 +23,8 @@ export function useDashboard() {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
 
+  const [year, setYear] = useState<number | undefined>(undefined);
+
   const fetchDashboardStats = useCallback(async () => {
     setStatsLoading(true);
     try {
@@ -44,6 +46,9 @@ export function useDashboard() {
     try {
       const res = await apiHelper.get<{ data: ChartDataPoint[] }>(
         "/invoices/stats/chart",
+        {
+          params: { year },
+        }
       );
 
       const formattedData = res.data.data.map((item) => ({
@@ -59,7 +64,7 @@ export function useDashboard() {
     } finally {
       setChartLoading(false);
     }
-  }, []);
+  }, [year]);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -72,5 +77,7 @@ export function useDashboard() {
     recentInvoices,
     chartData,
     loading: statsLoading || chartLoading || invoicesLoading,
+    year,
+    setYear,
   };
 }

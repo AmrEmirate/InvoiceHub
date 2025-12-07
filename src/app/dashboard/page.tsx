@@ -19,6 +19,8 @@ export default function DashboardPage() {
     recentInvoices,
     chartData,
     loading: dataLoading,
+    year,
+    setYear,
   } = useDashboard();
 
   useEffect(() => {
@@ -74,8 +76,8 @@ export default function DashboardPage() {
           <h2 className="text-xl font-bold text-foreground mb-2">
             Total Revenue
           </h2>
-              <p className="text-3xl font-bold text-foreground">
-                {formatCurrency(stats.totalRevenue)}
+          <p className="text-3xl font-bold text-foreground">
+            {formatCurrency(stats.totalRevenue)}
           </p>
           <p className="text-neutral-600 text-sm mt-2">
             From {stats.paidInvoices} paid invoices
@@ -84,7 +86,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <InvoiceChart data={chartData} />
+            <InvoiceChart data={chartData} year={year} onYearChange={setYear} />
           </div>
           <div>
             <RecentInvoices invoices={recentInvoices} />

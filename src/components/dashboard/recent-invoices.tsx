@@ -6,7 +6,6 @@ interface RecentInvoicesProps {
 }
 
 export default function RecentInvoices({ invoices }: RecentInvoicesProps) {
-
   const safeInvoices = Array.isArray(invoices) ? invoices : [];
 
   const getStatusColor = (status: InvoiceStatus) => {
@@ -28,7 +27,7 @@ export default function RecentInvoices({ invoices }: RecentInvoicesProps) {
       <h2 className="text-lg font-bold text-foreground mb-4">
         Recent Invoices
       </h2>
-      <div className="space-y-3">
+      <div className="space-y-3 h-[300px] overflow-y-auto pr-2 custom-scrollbar">
         {safeInvoices.length === 0 ? (
           <p className="text-sm text-neutral-500">No recent invoices found.</p>
         ) : (
@@ -50,7 +49,9 @@ export default function RecentInvoices({ invoices }: RecentInvoicesProps) {
                   {formatCurrency(invoice.totalAmount)}
                 </p>
                 <span
-                  className={`text-xs font-medium px-2 py-1 rounded ${getStatusColor(invoice.status)}`}
+                  className={`text-xs font-medium px-2 py-1 rounded ${getStatusColor(
+                    invoice.status
+                  )}`}
                 >
                   {invoice.status}
                 </span>
