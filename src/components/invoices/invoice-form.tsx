@@ -37,6 +37,7 @@ export default function InvoiceForm() {
     watch,
     formState: { errors },
   } = useForm<InvoiceFormData>({
+    mode: "onChange",
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
       clientId: "",

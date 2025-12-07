@@ -1,5 +1,10 @@
 import { Product } from "@/lib/types";
-import { Control, useWatch, FieldArrayWithId } from "react-hook-form";
+import {
+  Control,
+  useWatch,
+  FieldArrayWithId,
+  Controller,
+} from "react-hook-form";
 import { InvoiceFormData } from "./invoice-form-schema";
 import { useForm } from "react-hook-form";
 import { formatCurrency } from "@/lib/utils/formatNumber";
@@ -99,7 +104,10 @@ export function InvoiceItemsTable({
                 <td className="p-3 align-top">
                   <select
                     {...register(`items.${index}.productId`)}
-                    onChange={(e) => onProductSelect(index, e.target.value)}
+                    onChange={(e) => {
+                      register(`items.${index}.productId`).onChange(e);
+                      onProductSelect(index, e.target.value);
+                    }}
                     className="input-field text-sm"
                     aria-label="Select Product"
                     title="Select Product"
@@ -131,18 +139,26 @@ export function InvoiceItemsTable({
                   )}
                 </td>
                 <td className="p-3 align-top">
-                  <input
-                    type="number"
-                    min="1"
-                    {...register(`items.${index}.quantity`, {
-                      valueAsNumber: true,
-                    })}
-                    className={`input-field text-sm ${
-                      errors.items?.[index]?.quantity ? "border-red-500" : ""
-                    }`}
-                    placeholder="1"
-                    aria-label="Quantity"
-                    title="Quantity"
+                  <Controller
+                    control={control}
+                    name={`items.${index}.quantity`}
+                    render={({ field: { onChange, value, ...field } }) => (
+                      <input
+                        type="number"
+                        min="1"
+                        {...field}
+                        value={value}
+                        onChange={(e) => onChange(e.target.valueAsNumber)}
+                        className={`input-field text-sm ${
+                          errors.items?.[index]?.quantity
+                            ? "border-red-500"
+                            : ""
+                        }`}
+                        placeholder="1"
+                        aria-label="Quantity"
+                        title="Quantity"
+                      />
+                    )}
                   />
                   {errors.items?.[index]?.quantity && (
                     <p className="text-danger text-xs mt-1">
@@ -257,16 +273,22 @@ export function InvoiceItemsTable({
                 <label className="text-xs font-medium text-neutral-500 mb-1 block">
                   Qty
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  {...register(`items.${index}.quantity`, {
-                    valueAsNumber: true,
-                  })}
-                  className={`input-field text-sm w-full ${
-                    errors.items?.[index]?.quantity ? "border-red-500" : ""
-                  }`}
-                  placeholder="1"
+                <Controller
+                  control={control}
+                  name={`items.${index}.quantity`}
+                  render={({ field: { onChange, value, ...field } }) => (
+                    <input
+                      type="number"
+                      min="1"
+                      {...field}
+                      value={value}
+                      onChange={(e) => onChange(e.target.valueAsNumber)}
+                      className={`input-field text-sm w-full ${
+                        errors.items?.[index]?.quantity ? "border-red-500" : ""
+                      }`}
+                      placeholder="1"
+                    />
+                  )}
                 />
               </div>
               <div>
