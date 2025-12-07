@@ -1,7 +1,10 @@
 "use client";
 
 import DashboardLayout from "@/components/layouts/dashboard-layout";
-import { ProductForm, ProductFormData } from "@/components/products/product-form";
+import {
+  ProductForm,
+  ProductFormData,
+} from "@/components/products/product-form";
 import { useApi } from "@/hooks/use-api";
 import { Category, Product } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,8 +16,12 @@ import { toast } from "sonner";
 
 export default function CreateProductPage() {
   const router = useRouter();
-  const { create: createProduct, loading: loadingProduct } = useApi<Product, ProductFormData>("products");
-  const { data: categories, getAll: getCategories } = useApi<Category>("categories");
+  const { create: createProduct, loading: loadingProduct } = useApi<
+    Product,
+    ProductFormData
+  >("products");
+  const { data: categories, getAll: getCategories } =
+    useApi<Category>("categories");
 
   useEffect(() => {
     getCategories();
@@ -24,6 +31,7 @@ export default function CreateProductPage() {
     register,
     handleSubmit,
     setError,
+    control,
     formState: { errors },
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -72,6 +80,7 @@ export default function CreateProductPage() {
           register={register}
           handleSubmit={handleSubmit}
           errors={errors}
+          control={control}
         />
       </div>
     </DashboardLayout>

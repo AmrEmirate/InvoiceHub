@@ -3,13 +3,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Category } from "@/lib/types";
+import { Controller, Control } from "react-hook-form";
+import { formatNumber } from "@/lib/utils/formatNumber";
 
 export const productSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   sku: z.string().min(1, "SKU is required"),
   price: z.preprocess(
     (a) => parseFloat(a as string),
-    z.number().min(0.01, "Price must be greater than 0"),
+    z.number().min(0.01, "Price must be greater than 0")
   ),
   categoryId: z.string().min(1, "Category is required"),
   description: z.string().optional(),
@@ -25,6 +27,7 @@ interface ProductFormProps {
   register: ReturnType<typeof useForm<ProductFormData>>["register"];
   handleSubmit: ReturnType<typeof useForm<ProductFormData>>["handleSubmit"];
   errors: ReturnType<typeof useForm<ProductFormData>>["formState"]["errors"];
+  control: Control<ProductFormData>;
 }
 
 export function ProductForm({
@@ -35,6 +38,7 @@ export function ProductForm({
   register,
   handleSubmit,
   errors,
+  control,
 }: ProductFormProps) {
   return (
     <div className="card p-6 bg-green-50 border-green-200">
@@ -69,18 +73,28 @@ export function ProductForm({
           </div>
           <div>
             <label className="label-text">Price *</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              {...register("price")}
-              className={`input-field ${errors.price ? "border-red-500" : ""}`}
-              placeholder="0.00"
+            <Controller
+              control={control}
+              name="price"
+              render={({ field: { onChange, value, ...field } }) => (
+                <input
+                  {...field}
+                  type="text"
+                  className={`input-field ${
+                    errors.price ? "border-red-500" : ""
+                  }`}
+                  placeholder="0"
+                  value={value ? formatNumber(value) : ""}
+                  onChange={(e) => {
+                    const rawValue = e.target.value.replace(/\D/g, "");
+                    const numberValue = rawValue ? parseInt(rawValue, 10) : 0;
+                    onChange(numberValue);
+                  }}
+                />
+              )}
             />
             {errors.price && (
-              <p className="text-danger text-sm mt-1">
-                {errors.price.message}
-              </p>
+              <p className="text-danger text-sm mt-1">{errors.price.message}</p>
             )}
           </div>
           <div>
@@ -121,7 +135,11 @@ export function ProductForm({
           </div>
         </div>
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? "Saving..." : isEditing ? "Update Product" : "Save Product"}
+          {loading
+            ? "Saving..."
+            : isEditing
+            ? "Update Product"
+            : "Save Product"}
         </button>
       </form>
     </div>

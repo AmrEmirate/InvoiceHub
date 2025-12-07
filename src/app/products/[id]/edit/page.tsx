@@ -1,7 +1,10 @@
 "use client";
 
 import DashboardLayout from "@/components/layouts/dashboard-layout";
-import { ProductForm, ProductFormData } from "@/components/products/product-form";
+import {
+  ProductForm,
+  ProductFormData,
+} from "@/components/products/product-form";
 import { useApi } from "@/hooks/use-api";
 import { Category, Product } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,22 +19,21 @@ export default function EditProductPage() {
   const params = useParams();
   const id = params.id as string;
 
-  const { 
-    data: products, 
+  const {
+    data: products,
     item: product,
-    getOne: getProduct, 
-    update: updateProduct, 
-    loading: loadingProduct 
+    getOne: getProduct,
+    update: updateProduct,
+    loading: loadingProduct,
   } = useApi<Product, ProductFormData>("products");
-  
-  const { data: categories, getAll: getCategories } = useApi<Category>("categories");
 
-
+  const { data: categories, getAll: getCategories } =
+    useApi<Category>("categories");
 
   useEffect(() => {
     getCategories();
     if (id) {
-        getProduct(id);
+      getProduct(id);
     }
   }, [getCategories, getProduct, id]);
 
@@ -40,6 +42,7 @@ export default function EditProductPage() {
     handleSubmit,
     setValue,
     setError,
+    control,
     formState: { errors },
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -79,25 +82,21 @@ export default function EditProductPage() {
   };
 
   if (!product && loadingProduct) {
-      return (
-          <DashboardLayout>
-              <div className="flex items-center justify-center min-h-[50vh]">
-                  Loading...
-              </div>
-          </DashboardLayout>
-      )
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          Loading...
+        </div>
+      </DashboardLayout>
+    );
   }
 
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Edit Product
-          </h1>
-          <p className="text-neutral-600">
-            Update product details
-          </p>
+          <h1 className="text-3xl font-bold text-foreground">Edit Product</h1>
+          <p className="text-neutral-600">Update product details</p>
         </div>
 
         <ProductForm
@@ -108,6 +107,7 @@ export default function EditProductPage() {
           register={register}
           handleSubmit={handleSubmit}
           errors={errors}
+          control={control}
         />
       </div>
     </DashboardLayout>
