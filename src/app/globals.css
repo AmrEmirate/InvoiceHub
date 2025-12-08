@@ -154,11 +154,11 @@
   }
 
   .btn-primary {
-    @apply px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent-dark transition-colors;
+    @apply px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent-dark transition-colors cursor-pointer;
   }
 
   .btn-secondary {
-    @apply px-4 py-2 bg-neutral-100 text-foreground rounded-lg font-medium hover:bg-neutral-200 transition-colors;
+    @apply px-4 py-2 bg-neutral-100 text-foreground rounded-lg font-medium hover:bg-neutral-200 transition-colors cursor-pointer;
   }
 
   .input-field {
@@ -174,17 +174,42 @@
   @apply box-border;
 }
 
+/* Global cursor pointer for all clickable elements */
+button,
+[role="button"],
+a,
+select,
+input[type="checkbox"],
+input[type="radio"],
+input[type="submit"],
+input[type="button"],
+input[type="reset"],
+input[type="file"],
+label[for],
+summary,
+[onclick],
+.clickable {
+  cursor: pointer;
+}
+
+/* Disabled elements should show not-allowed cursor */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[disabled] {
+  cursor: not-allowed;
+}
+
 html {
   scroll-behavior: smooth;
 }
 
 body {
   @apply bg-neutral-50 text-foreground;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
-    Cantarell, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, sans-serif;
 }
-
 
 @keyframes fadeIn {
   from {
