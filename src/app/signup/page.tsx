@@ -5,8 +5,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { useSearchParams } from "next/navigation";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { API_URL } from "@/lib/apiHelper";
 
 function SignupContent() {
   const { register, googleSignup, loading } = useAuth();

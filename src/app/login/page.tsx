@@ -4,8 +4,7 @@ import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { API_URL } from "@/lib/apiHelper";
 
 export default function LoginPage() {
   const { login, loading } = useAuth();

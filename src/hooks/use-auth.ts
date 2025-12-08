@@ -36,7 +36,7 @@ export function useAuth() {
     try {
       const res = await apiHelper.post<ApiResponse<null>>(
         "/auth/register",
-        data,
+        data
       );
       toast.success("Check your email!", {
         description: res.data.message,
@@ -56,7 +56,7 @@ export function useAuth() {
       try {
         const res = await apiHelper.post<ApiResponse<AuthResponse>>(
           "/auth/login",
-          data,
+          data
         );
 
         localStorage.setItem("authToken", res.data.data.token);
@@ -74,7 +74,7 @@ export function useAuth() {
         setLoading(false);
       }
     },
-    [router],
+    [router]
   );
 
   const logout = useCallback(() => {
@@ -122,7 +122,7 @@ export function useAuth() {
           {
             token,
             password,
-          },
+          }
         );
 
         toast.success("Password set!", {
@@ -138,7 +138,7 @@ export function useAuth() {
         setLoading(false);
       }
     },
-    [router],
+    [router]
   );
 
   const googleSignup = useCallback(
@@ -158,8 +158,7 @@ export function useAuth() {
         toast.success("Registration successful!");
         router.push("/dashboard");
       } catch (error: any) {
-        const msg =
-          error.response?.data?.message || "Google signup failed";
+        const msg = error.response?.data?.message || "Google signup failed";
         toast.error("Error", { description: msg });
         throw error;
       } finally {

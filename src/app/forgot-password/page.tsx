@@ -4,8 +4,7 @@ import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import apiHelper from "@/lib/apiHelper";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -24,24 +23,14 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/auth/forgot-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Something went wrong");
-      }
+      await apiHelper.post("/auth/forgot-password", { email });
 
       setIsSubmitted(true);
       toast.success("Reset link sent to your email");
     } catch (err: any) {
-      const msg = err.message || "Failed to send reset link. Please try again.";
+      const msg =
+        err.response?.data?.message ||
+        "Failed to send reset link. Please try again.";
       setError(msg);
       toast.error(msg);
     } finally {

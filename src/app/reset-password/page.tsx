@@ -8,20 +8,23 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+import apiHelper from "@/lib/apiHelper";
 
-const formSchema = z.object({
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
+const formSchema = z
+  .object({
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -42,43 +45,36 @@ function ResetPasswordForm() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token,
-          password: values.password,
-        }),
+      await apiHelper.post("/auth/reset-password", {
+        token,
+        password: values.password,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Something went wrong");
-      }
 
       toast.success("Password reset successfully");
       router.push("/login");
     } catch (error: any) {
-      toast.error(error.message);
+      const msg = error.response?.data?.message || "Something went wrong";
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
   }
 
   if (!token) {
-     return (
-        <div className="text-center">
-            <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm mb-4">
-                Invalid or missing reset token. Please request a new password reset link.
-            </div>
-            <Link href="/forgot-password" className="btn-primary inline-block w-full text-center">
-                Go to Forgot Password
-            </Link>
+    return (
+      <div className="text-center">
+        <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger text-sm mb-4">
+          Invalid or missing reset token. Please request a new password reset
+          link.
         </div>
-     )
+        <Link
+          href="/forgot-password"
+          className="btn-primary inline-block w-full text-center"
+        >
+          Go to Forgot Password
+        </Link>
+      </div>
+    );
   }
 
   return (
@@ -105,7 +101,9 @@ function ResetPasswordForm() {
           </button>
         </div>
         {form.formState.errors.password && (
-            <p className="text-sm text-danger mt-1">{form.formState.errors.password.message}</p>
+          <p className="text-sm text-danger mt-1">
+            {form.formState.errors.password.message}
+          </p>
         )}
       </div>
 
@@ -131,7 +129,9 @@ function ResetPasswordForm() {
           </button>
         </div>
         {form.formState.errors.confirmPassword && (
-            <p className="text-sm text-danger mt-1">{form.formState.errors.confirmPassword.message}</p>
+          <p className="text-sm text-danger mt-1">
+            {form.formState.errors.confirmPassword.message}
+          </p>
         )}
       </div>
 
@@ -160,13 +160,23 @@ export default function ResetPasswordPage() {
         </div>
 
         <div className="card p-8 mb-6">
-            <div className="mb-6 text-center">
-                <h2 className="text-xl font-semibold text-foreground">Reset Password</h2>
-                <p className="text-sm text-neutral-500 mt-1">Enter your new password below</p>
-            </div>
-            <Suspense fallback={<div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
-                <ResetPasswordForm />
-            </Suspense>
+          <div className="mb-6 text-center">
+            <h2 className="text-xl font-semibold text-foreground">
+              Reset Password
+            </h2>
+            <p className="text-sm text-neutral-500 mt-1">
+              Enter your new password below
+            </p>
+          </div>
+          <Suspense
+            fallback={
+              <div className="flex justify-center">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            }
+          >
+            <ResetPasswordForm />
+          </Suspense>
         </div>
       </div>
     </div>
