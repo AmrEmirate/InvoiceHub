@@ -28,13 +28,13 @@ function InvoicesContent() {
   } = useApi<Invoice>("invoices");
 
   const [searchTerm, setSearchTerm] = useState(
-    searchParams.get("search") || "",
+    searchParams.get("search") || ""
   );
   const [statusFilter, setStatusFilter] = useState(
-    searchParams.get("status") || "all",
+    searchParams.get("status") || "all"
   );
   const [currentPage, setCurrentPage] = useState(
-    Number(searchParams.get("page")) || 1,
+    Number(searchParams.get("page")) || 1
   );
 
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
@@ -109,9 +109,32 @@ function InvoicesContent() {
     getAll(params);
   };
 
-  const [deleteDialog, setDeleteDialog] = useState< {isOpen: boolean; invoiceId: string | null }>({  
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    invoiceId: string | null;
+  }>({
     isOpen: false,
     invoiceId: null,
+  });
+
+  const [sendEmailDialog, setSendEmailDialog] = useState<{
+    isOpen: boolean;
+    invoiceId: string | null;
+    invoiceNumber: string;
+  }>({
+    isOpen: false,
+    invoiceId: null,
+    invoiceNumber: "",
+  });
+
+  const [markPaidDialog, setMarkPaidDialog] = useState<{
+    isOpen: boolean;
+    invoiceId: string | null;
+    invoiceNumber: string;
+  }>({
+    isOpen: false,
+    invoiceId: null,
+    invoiceNumber: "",
   });
 
   const handleDeleteClick = (id: string) => {
@@ -120,26 +143,57 @@ function InvoicesContent() {
 
   const handleConfirmDelete = async () => {
     if (!deleteDialog.invoiceId) return;
-    
+
     await remove(deleteDialog.invoiceId);
     setDeleteDialog({ isOpen: false, invoiceId: null });
     refreshCurrentPage();
   };
 
-  const handleStatusUpdate = async (id: string, newStatus: InvoiceStatus) => {
-    try {
-      await apiHelper.patch(`/invoices/${id}/status`, { status: newStatus });
-      toast.success(`Invoice marked as ${newStatus}`);
-      refreshCurrentPage();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to update status");
+  const handleStatusUpdate = (id: string, newStatus: InvoiceStatus) => {
+    // Find invoice to get invoice number
+    const invoice = invoices.find((inv) => inv.id === id);
+    if (newStatus === InvoiceStatus.PAID) {
+      setMarkPaidDialog({
+        isOpen: true,
+        invoiceId: id,
+        invoiceNumber: invoice?.invoiceNumber || "",
+      });
     }
   };
 
-  const handleSendEmail = async (id: string) => {
-    setSendingEmailId(id);
+  const handleConfirmMarkPaid = async () => {
+    if (!markPaidDialog.invoiceId) return;
+
     try {
-      await apiHelper.post(`/invoices/${id}/send`, {});
+      await apiHelper.patch(`/invoices/${markPaidDialog.invoiceId}/status`, {
+        status: InvoiceStatus.PAID,
+      });
+      toast.success(`Invoice marked as PAID`);
+      refreshCurrentPage();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update status");
+    } finally {
+      setMarkPaidDialog({ isOpen: false, invoiceId: null, invoiceNumber: "" });
+    }
+  };
+
+  const handleSendEmailClick = (id: string) => {
+    const invoice = invoices.find((inv) => inv.id === id);
+    setSendEmailDialog({
+      isOpen: true,
+      invoiceId: id,
+      invoiceNumber: invoice?.invoiceNumber || "",
+    });
+  };
+
+  const handleConfirmSendEmail = async () => {
+    if (!sendEmailDialog.invoiceId) return;
+
+    setSendingEmailId(sendEmailDialog.invoiceId);
+    setSendEmailDialog({ isOpen: false, invoiceId: null, invoiceNumber: "" });
+
+    try {
+      await apiHelper.post(`/invoices/${sendEmailDialog.invoiceId}/send`, {});
       toast.success("Invoice sent to client via email!");
       refreshCurrentPage();
     } catch (error: any) {
@@ -177,7 +231,7 @@ function InvoicesContent() {
           invoices={invoices}
           loading={loading}
           onStatusUpdate={handleStatusUpdate}
-          onSendEmail={handleSendEmail}
+          onSendEmail={handleSendEmailClick}
           onDelete={handleDeleteClick}
           sendingEmailId={sendingEmailId}
         />
@@ -191,6 +245,7 @@ function InvoicesContent() {
           />
         )}
 
+        {/* Delete Confirmation Dialog */}
         <ConfirmDialog
           isOpen={deleteDialog.isOpen}
           onClose={() => setDeleteDialog({ isOpen: false, invoiceId: null })}
@@ -199,6 +254,40 @@ function InvoicesContent() {
           message="Are you sure you want to delete this invoice? This action cannot be undone."
           confirmText="Delete"
           variant="danger"
+        />
+
+        {/* Send Email Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={sendEmailDialog.isOpen}
+          onClose={() =>
+            setSendEmailDialog({
+              isOpen: false,
+              invoiceId: null,
+              invoiceNumber: "",
+            })
+          }
+          onConfirm={handleConfirmSendEmail}
+          title="Send Invoice Email"
+          message={`Are you sure you want to send invoice ${sendEmailDialog.invoiceNumber} to the client via email?`}
+          confirmText="Send Email"
+          variant="info"
+        />
+
+        {/* Mark as Paid Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={markPaidDialog.isOpen}
+          onClose={() =>
+            setMarkPaidDialog({
+              isOpen: false,
+              invoiceId: null,
+              invoiceNumber: "",
+            })
+          }
+          onConfirm={handleConfirmMarkPaid}
+          title="Mark as Paid"
+          message={`Are you sure you want to mark invoice ${markPaidDialog.invoiceNumber} as PAID? This will update the invoice status.`}
+          confirmText="Mark as Paid"
+          variant="success"
         />
       </div>
     </DashboardLayout>
