@@ -7,6 +7,7 @@ interface InvoiceTableProps {
   onStatusUpdate: (id: string, status: InvoiceStatus) => void;
   onSendEmail: (id: string) => void;
   onDelete: (id: string) => void;
+  onCancel: (id: string) => void;
   sendingEmailId: string | null;
 }
 
@@ -36,6 +37,7 @@ export function InvoiceTable({
   onStatusUpdate,
   onSendEmail,
   onDelete,
+  onCancel,
   sendingEmailId,
 }: InvoiceTableProps) {
   const safeInvoices = Array.isArray(invoices) ? invoices : [];
@@ -127,6 +129,15 @@ export function InvoiceTable({
                           className="text-green-600 hover:text-green-800 text-sm font-medium"
                         >
                           Mark Paid
+                        </button>
+                      )}
+                    {invoice.status !== InvoiceStatus.PAID &&
+                      invoice.status !== InvoiceStatus.CANCELLED && (
+                        <button
+                          onClick={() => onCancel(invoice.id)}
+                          className="text-orange-600 hover:text-orange-800 text-sm font-medium"
+                        >
+                          Cancel
                         </button>
                       )}
                     <button

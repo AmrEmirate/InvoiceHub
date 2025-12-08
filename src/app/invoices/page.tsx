@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layouts/dashboard-layout";
 import { useApi } from "@/hooks/use-api";
 import apiHelper from "@/lib/apiHelper";
@@ -38,6 +38,18 @@ function InvoicesContent() {
   );
 
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+
+  // Ref to track pending timers for auto-change to PENDING status
+  const pendingTimers = useRef<Record<string, NodeJS.Timeout>>({});
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(pendingTimers.current).forEach((timer) =>
+        clearTimeout(timer)
+      );
+    };
+  }, []);
 
   useEffect(() => {
     const params: any = {
@@ -109,6 +121,7 @@ function InvoicesContent() {
     getAll(params);
   };
 
+  // Dialog states
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean;
     invoiceId: string | null;
@@ -137,6 +150,17 @@ function InvoicesContent() {
     invoiceNumber: "",
   });
 
+  const [cancelDialog, setCancelDialog] = useState<{
+    isOpen: boolean;
+    invoiceId: string | null;
+    invoiceNumber: string;
+  }>({
+    isOpen: false,
+    invoiceId: null,
+    invoiceNumber: "",
+  });
+
+  // Delete handlers
   const handleDeleteClick = (id: string) => {
     setDeleteDialog({ isOpen: true, invoiceId: id });
   };
@@ -149,10 +173,15 @@ function InvoicesContent() {
     refreshCurrentPage();
   };
 
+  // Status update handler (for Mark Paid)
   const handleStatusUpdate = (id: string, newStatus: InvoiceStatus) => {
-    // Find invoice to get invoice number
     const invoice = invoices.find((inv) => inv.id === id);
     if (newStatus === InvoiceStatus.PAID) {
+      // Clear any pending timer for this invoice
+      if (pendingTimers.current[id]) {
+        clearTimeout(pendingTimers.current[id]);
+        delete pendingTimers.current[id];
+      }
       setMarkPaidDialog({
         isOpen: true,
         invoiceId: id,
@@ -163,6 +192,12 @@ function InvoicesContent() {
 
   const handleConfirmMarkPaid = async () => {
     if (!markPaidDialog.invoiceId) return;
+
+    // Clear any pending timer for this invoice
+    if (pendingTimers.current[markPaidDialog.invoiceId]) {
+      clearTimeout(pendingTimers.current[markPaidDialog.invoiceId]);
+      delete pendingTimers.current[markPaidDialog.invoiceId];
+    }
 
     try {
       await apiHelper.patch(`/invoices/${markPaidDialog.invoiceId}/status`, {
@@ -177,6 +212,7 @@ function InvoicesContent() {
     }
   };
 
+  // Send Email handlers
   const handleSendEmailClick = (id: string) => {
     const invoice = invoices.find((inv) => inv.id === id);
     setSendEmailDialog({
@@ -189,17 +225,68 @@ function InvoicesContent() {
   const handleConfirmSendEmail = async () => {
     if (!sendEmailDialog.invoiceId) return;
 
-    setSendingEmailId(sendEmailDialog.invoiceId);
+    const invoiceId = sendEmailDialog.invoiceId;
+    setSendingEmailId(invoiceId);
     setSendEmailDialog({ isOpen: false, invoiceId: null, invoiceNumber: "" });
 
     try {
-      await apiHelper.post(`/invoices/${sendEmailDialog.invoiceId}/send`, {});
+      await apiHelper.post(`/invoices/${invoiceId}/send`, {});
       toast.success("Invoice sent to client via email!");
       refreshCurrentPage();
+
+      // Start 10 second timer to auto-change status to PENDING
+      if (pendingTimers.current[invoiceId]) {
+        clearTimeout(pendingTimers.current[invoiceId]);
+      }
+
+      pendingTimers.current[invoiceId] = setTimeout(async () => {
+        try {
+          await apiHelper.patch(`/invoices/${invoiceId}/status`, {
+            status: InvoiceStatus.PENDING,
+          });
+          toast.info("Invoice status changed to PENDING");
+          refreshCurrentPage();
+        } catch (error) {
+          // Silently fail if status already changed
+        }
+        delete pendingTimers.current[invoiceId];
+      }, 10000); // 10 seconds
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to send email");
     } finally {
       setSendingEmailId(null);
+    }
+  };
+
+  // Cancel handlers
+  const handleCancelClick = (id: string) => {
+    const invoice = invoices.find((inv) => inv.id === id);
+    setCancelDialog({
+      isOpen: true,
+      invoiceId: id,
+      invoiceNumber: invoice?.invoiceNumber || "",
+    });
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelDialog.invoiceId) return;
+
+    // Clear any pending timer for this invoice
+    if (pendingTimers.current[cancelDialog.invoiceId]) {
+      clearTimeout(pendingTimers.current[cancelDialog.invoiceId]);
+      delete pendingTimers.current[cancelDialog.invoiceId];
+    }
+
+    try {
+      await apiHelper.patch(`/invoices/${cancelDialog.invoiceId}/status`, {
+        status: InvoiceStatus.CANCELLED,
+      });
+      toast.success("Invoice has been cancelled");
+      refreshCurrentPage();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to cancel invoice");
+    } finally {
+      setCancelDialog({ isOpen: false, invoiceId: null, invoiceNumber: "" });
     }
   };
 
@@ -233,6 +320,7 @@ function InvoicesContent() {
           onStatusUpdate={handleStatusUpdate}
           onSendEmail={handleSendEmailClick}
           onDelete={handleDeleteClick}
+          onCancel={handleCancelClick}
           sendingEmailId={sendingEmailId}
         />
 
@@ -288,6 +376,23 @@ function InvoicesContent() {
           message={`Are you sure you want to mark invoice ${markPaidDialog.invoiceNumber} as PAID? This will update the invoice status.`}
           confirmText="Mark as Paid"
           variant="success"
+        />
+
+        {/* Cancel Invoice Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={cancelDialog.isOpen}
+          onClose={() =>
+            setCancelDialog({
+              isOpen: false,
+              invoiceId: null,
+              invoiceNumber: "",
+            })
+          }
+          onConfirm={handleConfirmCancel}
+          title="Cancel Invoice"
+          message={`Are you sure you want to cancel invoice ${cancelDialog.invoiceNumber}? This will change the status to CANCELLED.`}
+          confirmText="Cancel Invoice"
+          variant="danger"
         />
       </div>
     </DashboardLayout>
