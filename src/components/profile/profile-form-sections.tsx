@@ -99,9 +99,7 @@ export function BusinessInfo({
             title="Company Name"
           />
           {errors.company && (
-            <p className="text-danger text-sm mt-1">
-              {errors.company.message}
-            </p>
+            <p className="text-danger text-sm mt-1">{errors.company.message}</p>
           )}
         </div>
         <div>
@@ -118,6 +116,12 @@ export function BusinessInfo({
             }`}
             placeholder="+1234567890"
             title="Phone Number"
+            onKeyPress={(e) => {
+              // Allow only numbers, +, -, space, and parentheses for phone
+              if (!/[0-9+\-\s()]/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
           />
         </div>
       </div>
@@ -196,6 +200,12 @@ export function AddressInfo({ register, isEditing }: AddressInfoProps) {
             }`}
             placeholder="Zip Code"
             title="Zip Code"
+            onKeyPress={(e) => {
+              // Allow only numbers and dash for zip code
+              if (!/[0-9-]/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
           />
         </div>
         <div>
@@ -224,10 +234,7 @@ interface TaxPaymentInfoProps {
   isEditing: boolean;
 }
 
-export function TaxPaymentInfo({
-  register,
-  isEditing,
-}: TaxPaymentInfoProps) {
+export function TaxPaymentInfo({ register, isEditing }: TaxPaymentInfoProps) {
   return (
     <ProfileFormSection title="Tax & Payment Information">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -245,6 +252,12 @@ export function TaxPaymentInfo({
             }`}
             placeholder="Tax ID"
             title="Tax ID"
+            onKeyPress={(e) => {
+              // Allow only numbers for tax ID
+              if (!/[0-9]/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
           />
         </div>
         <div>

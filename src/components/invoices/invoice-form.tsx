@@ -47,6 +47,9 @@ export default function InvoiceForm() {
       notes: "",
       isRecurring: false,
       recurrenceInterval: "monthly",
+      recurrenceDay: undefined,
+      paymentTermDays: undefined,
+      autoSendEmail: false,
       items: [defaultItem],
     },
   });

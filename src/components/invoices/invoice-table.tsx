@@ -121,7 +121,8 @@ export function InvoiceTable({
                       </button>
                     )}
                     {invoice.status !== InvoiceStatus.PAID &&
-                      invoice.status !== InvoiceStatus.DRAFT && (
+                      invoice.status !== InvoiceStatus.DRAFT &&
+                      invoice.status !== InvoiceStatus.CANCELLED && (
                         <button
                           onClick={() =>
                             onStatusUpdate(invoice.id, InvoiceStatus.PAID)

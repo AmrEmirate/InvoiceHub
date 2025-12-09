@@ -145,7 +145,7 @@ export default function ProfilePage() {
   const handleRemoveAvatar = () => {
     setPreviewUrl(null);
     setSelectedFile(null);
-    setValue("avatar", undefined, { shouldDirty: true });
+    setValue("avatar", "", { shouldDirty: true });
   };
 
   if (authLoading && !user) {

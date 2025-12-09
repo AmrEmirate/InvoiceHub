@@ -80,9 +80,7 @@ export function InvoiceDetails({
             title="Due Date"
           />
           {errors.dueDate && (
-            <p className="text-danger text-sm mt-1">
-              {errors.dueDate.message}
-            </p>
+            <p className="text-danger text-sm mt-1">{errors.dueDate.message}</p>
           )}
         </div>
       </div>
@@ -142,6 +140,68 @@ export function InvoiceDetails({
           </div>
         )}
       </div>
+
+      {isRecurring && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+          <div>
+            <label htmlFor="recurrenceDay" className="label-text">
+              Tanggal Recurring (1-31)
+            </label>
+            <select
+              id="recurrenceDay"
+              {...register("recurrenceDay")}
+              className="input-field"
+              title="Tanggal invoice di-generate setiap bulan"
+            >
+              <option value="">-- Pilih Tanggal --</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                <option key={day} value={day}>
+                  Tanggal {day}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="paymentTermDays" className="label-text">
+              Batas Pembayaran (Hari)
+            </label>
+            <select
+              id="paymentTermDays"
+              {...register("paymentTermDays")}
+              className="input-field"
+              title="Berapa hari setelah invoice dibuat untuk jatuh tempo"
+            >
+              <option value="">-- Pilih Batas --</option>
+              <option value="7">7 Hari</option>
+              <option value="14">14 Hari</option>
+              <option value="21">21 Hari</option>
+              <option value="30">30 Hari</option>
+              <option value="45">45 Hari</option>
+              <option value="60">60 Hari</option>
+              <option value="90">90 Hari</option>
+            </select>
+          </div>
+
+          <div className="flex items-center h-full pt-6">
+            <label
+              htmlFor="autoSendEmail"
+              className="flex items-center space-x-2 cursor-pointer"
+            >
+              <input
+                id="autoSendEmail"
+                type="checkbox"
+                {...register("autoSendEmail")}
+                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                title="Auto Send Email"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Auto Send Email
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
