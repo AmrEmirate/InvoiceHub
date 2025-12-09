@@ -14,27 +14,67 @@ const invoiceItemSchema = z.object({
   ),
 });
 
-export const invoiceSchema = z.object({
-  clientId: z.string().min(1, "Client is required"),
-  invoiceNumber: z.string().optional(),
-  dueDate: z.string().min(1, "Due date is required"),
-  status: z.nativeEnum(InvoiceStatus),
-  notes: z.string().optional(),
-  isRecurring: z.boolean(),
-  recurrenceInterval: z.string(),
-  recurrenceDay: z.preprocess(
-    (val) =>
-      val === "" || val === undefined ? undefined : parseInt(val as string),
-    z.number().min(1).max(31).optional()
-  ),
-  paymentTermDays: z.preprocess(
-    (val) =>
-      val === "" || val === undefined ? undefined : parseInt(val as string),
-    z.number().min(1).optional()
-  ),
-  autoSendEmail: z.boolean(),
-  items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
-});
+export const invoiceSchema = z
+  .object({
+    clientId: z.string().min(1, "Client is required"),
+    invoiceNumber: z.string().optional(),
+    dueDate: z.string().optional(),
+    status: z.nativeEnum(InvoiceStatus),
+    notes: z.string().optional(),
+    isRecurring: z.boolean(),
+    recurrenceInterval: z.string(),
+    recurrenceDay: z.preprocess(
+      (val) =>
+        val === "" || val === undefined ? undefined : parseInt(val as string),
+      z.number().min(1).max(31).optional()
+    ),
+    paymentTermDays: z.preprocess(
+      (val) =>
+        val === "" || val === undefined ? undefined : parseInt(val as string),
+      z.number().min(1).optional()
+    ),
+    autoSendEmail: z.boolean(),
+    items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
+  })
+  .refine(
+    (data) => {
+      // If not recurring, dueDate is required
+      if (!data.isRecurring) {
+        return data.dueDate && data.dueDate.length > 0;
+      }
+      return true;
+    },
+    {
+      message: "Due date is required",
+      path: ["dueDate"],
+    }
+  )
+  .refine(
+    (data) => {
+      // If recurring, paymentTermDays is required
+      if (data.isRecurring) {
+        return data.paymentTermDays !== undefined && data.paymentTermDays > 0;
+      }
+      return true;
+    },
+    {
+      message: "Batas Pembayaran wajib diisi untuk invoice recurring",
+      path: ["paymentTermDays"],
+    }
+  )
+  .refine(
+    (data) => {
+      // If recurring, recurrenceDay is required
+      if (data.isRecurring) {
+        return data.recurrenceDay !== undefined && data.recurrenceDay >= 1;
+      }
+      return true;
+    },
+    {
+      message: "Tanggal Recurring wajib diisi untuk invoice recurring",
+      path: ["recurrenceDay"],
+    }
+  );
 
 export type InvoiceFormData = z.infer<typeof invoiceSchema>;
 export type InvoiceItemData = z.infer<typeof invoiceItemSchema>;

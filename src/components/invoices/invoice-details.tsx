@@ -70,17 +70,28 @@ export function InvoiceDetails({
 
         <div>
           <label htmlFor="dueDate" className="label-text">
-            Due Date *
+            Due Date {!isRecurring && "*"}
           </label>
           <input
             id="dueDate"
             type="date"
             {...register("dueDate")}
-            className={`input-field ${errors.dueDate ? "border-red-500" : ""}`}
+            className={`input-field ${errors.dueDate ? "border-red-500" : ""} ${
+              isRecurring ? "bg-gray-100 cursor-not-allowed opacity-60" : ""
+            }`}
             title="Due Date"
+            disabled={isRecurring}
           />
-          {errors.dueDate && (
-            <p className="text-danger text-sm mt-1">{errors.dueDate.message}</p>
+          {isRecurring ? (
+            <p className="text-gray-500 text-xs mt-1">
+              Due date otomatis dihitung dari Batas Pembayaran
+            </p>
+          ) : (
+            errors.dueDate && (
+              <p className="text-danger text-sm mt-1">
+                {errors.dueDate.message}
+              </p>
+            )
           )}
         </div>
       </div>
@@ -145,12 +156,14 @@ export function InvoiceDetails({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
           <div>
             <label htmlFor="recurrenceDay" className="label-text">
-              Tanggal Recurring (1-31)
+              Tanggal Recurring (1-31) *
             </label>
             <select
               id="recurrenceDay"
               {...register("recurrenceDay")}
-              className="input-field"
+              className={`input-field ${
+                errors.recurrenceDay ? "border-red-500" : ""
+              }`}
               title="Tanggal invoice di-generate setiap bulan"
             >
               <option value="">-- Pilih Tanggal --</option>
@@ -160,16 +173,23 @@ export function InvoiceDetails({
                 </option>
               ))}
             </select>
+            {errors.recurrenceDay && (
+              <p className="text-danger text-sm mt-1">
+                {errors.recurrenceDay.message}
+              </p>
+            )}
           </div>
 
           <div>
             <label htmlFor="paymentTermDays" className="label-text">
-              Batas Pembayaran (Hari)
+              Batas Pembayaran (Hari) *
             </label>
             <select
               id="paymentTermDays"
               {...register("paymentTermDays")}
-              className="input-field"
+              className={`input-field ${
+                errors.paymentTermDays ? "border-red-500" : ""
+              }`}
               title="Berapa hari setelah invoice dibuat untuk jatuh tempo"
             >
               <option value="">-- Pilih Batas --</option>
@@ -181,6 +201,11 @@ export function InvoiceDetails({
               <option value="60">60 Hari</option>
               <option value="90">90 Hari</option>
             </select>
+            {errors.paymentTermDays && (
+              <p className="text-danger text-sm mt-1">
+                {errors.paymentTermDays.message}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center h-full pt-6">

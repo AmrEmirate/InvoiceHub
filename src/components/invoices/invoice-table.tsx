@@ -68,22 +68,28 @@ export function InvoiceTable({
         <table className="w-full">
           <thead className="bg-neutral-50 border-b border-neutral-200">
             <tr>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+              <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">
                 Invoice #
               </th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+              <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">
                 Client
               </th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                Date
+              <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">
+                Dibuat
               </th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+              <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">
+                Jatuh Tempo
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">
+                Email Terkirim
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">
                 Amount
               </th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
+              <th className="px-4 py-4 text-left text-sm font-semibold text-foreground">
                 Status
               </th>
-              <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">
+              <th className="px-4 py-4 text-right text-sm font-semibold text-foreground">
                 Actions
               </th>
             </tr>
@@ -94,32 +100,59 @@ export function InvoiceTable({
                 key={invoice.id}
                 className="hover:bg-neutral-50 transition-colors"
               >
-                <td className="px-6 py-4 font-medium">
+                <td className="px-4 py-4 font-medium">
                   {invoice.invoiceNumber}
                 </td>
-                <td className="px-6 py-4 text-neutral-600">
+                <td className="px-4 py-4 text-neutral-600">
                   {invoice.client?.name || "Unknown Client"}
                 </td>
-                <td className="px-6 py-4 text-neutral-600">
-                  {new Date(invoice.dueDate).toLocaleDateString()}
+                <td className="px-4 py-4 text-neutral-600 text-sm">
+                  {new Date(invoice.invoiceDate).toLocaleDateString("id-ID")}
                 </td>
-                <td className="px-6 py-4 font-semibold">
+                <td className="px-4 py-4 text-neutral-600 text-sm">
+                  <span
+                    className={
+                      new Date(invoice.dueDate) < new Date() &&
+                      invoice.status !== InvoiceStatus.PAID &&
+                      invoice.status !== InvoiceStatus.CANCELLED
+                        ? "text-red-600 font-medium"
+                        : ""
+                    }
+                  >
+                    {new Date(invoice.dueDate).toLocaleDateString("id-ID")}
+                  </span>
+                </td>
+                <td className="px-4 py-4 text-neutral-600 text-sm">
+                  {invoice.emailSentAt ? (
+                    new Date(invoice.emailSentAt).toLocaleDateString("id-ID")
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </td>
+                <td className="px-4 py-4 font-semibold">
                   {formatCurrency(invoice.totalAmount)}
                 </td>
-                <td className="px-6 py-4">{getStatusBadge(invoice.status)}</td>
+                <td className="px-4 py-4">{getStatusBadge(invoice.status)}</td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
-                    {invoice.status === InvoiceStatus.DRAFT && (
-                      <button
-                        onClick={() => onSendEmail(invoice.id)}
-                        disabled={sendingEmailId === invoice.id}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium disabled:opacity-50"
-                      >
-                        {sendingEmailId === invoice.id
-                          ? "Sending..."
-                          : "Send Email"}
-                      </button>
-                    )}
+                    {invoice.status === InvoiceStatus.DRAFT &&
+                      !invoice.autoSendEmail && (
+                        <button
+                          onClick={() => onSendEmail(invoice.id)}
+                          disabled={sendingEmailId === invoice.id}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium disabled:opacity-50"
+                        >
+                          {sendingEmailId === invoice.id
+                            ? "Sending..."
+                            : "Send Email"}
+                        </button>
+                      )}
+                    {invoice.status === InvoiceStatus.DRAFT &&
+                      invoice.autoSendEmail && (
+                        <span className="text-gray-400 text-sm italic">
+                          Auto Send
+                        </span>
+                      )}
                     {invoice.status !== InvoiceStatus.PAID &&
                       invoice.status !== InvoiceStatus.DRAFT &&
                       invoice.status !== InvoiceStatus.CANCELLED && (

@@ -84,6 +84,10 @@ export interface Invoice {
   totalAmount: number;
   isRecurring: boolean;
   recurrenceInterval?: string;
+  recurrenceDay?: number;
+  paymentTermDays?: number;
+  autoSendEmail?: boolean;
+  emailSentAt?: string;
   userId: string;
   clientId: string;
   client?: Client;
