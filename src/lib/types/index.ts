@@ -18,7 +18,6 @@ export interface User {
 }
 
 export interface Client {
-  [x: string]: any;
   id: string;
   name: string;
   email: string;
@@ -109,7 +108,9 @@ export interface ApiResponse<T> {
 
 export interface AuthResponse {
   user: User;
-  token: string;
+  token: string; // Backward compatibility
+  accessToken: string;
+  refreshToken: string;
 }
 
 export interface PaginatedResponse<T> {

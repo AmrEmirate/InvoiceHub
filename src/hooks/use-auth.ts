@@ -51,7 +51,7 @@ export function useAuth() {
   }, []);
 
   const login = useCallback(
-    async (data: any) => {
+    async (data: { email: string; password: string }) => {
       setLoading(true);
       try {
         const res = await apiHelper.post<ApiResponse<AuthResponse>>(
@@ -59,15 +59,25 @@ export function useAuth() {
           data
         );
 
-        localStorage.setItem("authToken", res.data.data.token);
+        // Store both tokens
+        localStorage.setItem(
+          "authToken",
+          res.data.data.accessToken || res.data.data.token
+        );
+        if (res.data.data.refreshToken) {
+          localStorage.setItem("refreshToken", res.data.data.refreshToken);
+        }
         localStorage.setItem("user", JSON.stringify(res.data.data.user));
 
         setUser(res.data.data.user);
 
         toast.success("Login successful");
         router.push("/dashboard");
-      } catch (error: any) {
-        const msg = error.response?.data?.message || "Login failed";
+      } catch (error: unknown) {
+        const axiosError = error as {
+          response?: { data?: { message?: string } };
+        };
+        const msg = axiosError.response?.data?.message || "Login failed";
         toast.error("Error", { description: msg });
         throw error;
       } finally {
@@ -77,12 +87,23 @@ export function useAuth() {
     [router]
   );
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("user");
-    setUser(null);
-    router.push("/login");
-    toast.info("Logged out");
+  const logout = useCallback(async () => {
+    try {
+      // Call server logout to revoke refresh token
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (refreshToken) {
+        await apiHelper.post("/auth/logout", { refreshToken });
+      }
+    } catch {
+      // Ignore errors - we're logging out anyway
+    } finally {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      setUser(null);
+      router.push("/login");
+      toast.info("Logged out");
+    }
   }, [router]);
 
   const getProfile = useCallback(async () => {
