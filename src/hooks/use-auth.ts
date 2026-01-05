@@ -1,27 +1,86 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { AxiosError } from "axios";
 import apiHelper from "@/lib/apiHelper";
 import { ApiResponse, AuthResponse, User } from "@/lib/types";
 import { toast } from "sonner";
+import {
+  STORAGE_KEYS,
+  API_ENDPOINTS,
+  ROUTES,
+  SUCCESS_MESSAGES,
+  ERROR_MESSAGES,
+} from "@/lib/constants";
 
+/**
+ * Registration data type
+ */
+interface RegisterData {
+  name: string;
+  email: string;
+  company: string;
+}
+
+/**
+ * Login credentials type
+ */
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+/**
+ * Axios error response type
+ */
+interface ApiErrorResponse {
+  message?: string;
+  code?: string;
+  details?: unknown;
+}
+
+/**
+ * Extract error message from Axios error
+ */
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data as ApiErrorResponse | undefined;
+    return data?.message || fallback;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return fallback;
+}
+
+/**
+ * Authentication hook for managing user authentication state
+ *
+ * @example
+ * ```tsx
+ * const { user, login, logout, loading } = useAuth();
+ * ```
+ */
 export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
 
+  /**
+   * Initialize auth state from localStorage
+   */
   useEffect(() => {
-    const initAuth = () => {
+    const initAuth = (): void => {
       if (typeof window !== "undefined") {
-        const storedUser = localStorage.getItem("user");
-        const token = localStorage.getItem("authToken");
+        const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 
         if (storedUser && token) {
           try {
             setUser(JSON.parse(storedUser));
-          } catch (e) {
+          } catch {
             console.error("Failed to parse user from local storage");
-            localStorage.removeItem("user");
-            localStorage.removeItem("authToken");
+            localStorage.removeItem(STORAGE_KEYS.USER);
+            localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
           }
         }
       }
@@ -31,18 +90,21 @@ export function useAuth() {
     initAuth();
   }, []);
 
-  const register = useCallback(async (data: any) => {
+  /**
+   * Register a new user
+   */
+  const register = useCallback(async (data: RegisterData): Promise<void> => {
     setLoading(true);
     try {
       const res = await apiHelper.post<ApiResponse<null>>(
-        "/auth/register",
+        API_ENDPOINTS.AUTH.REGISTER,
         data
       );
       toast.success("Check your email!", {
         description: res.data.message,
       });
-    } catch (error: any) {
-      const msg = error.response?.data?.message || "Registration failed";
+    } catch (error: unknown) {
+      const msg = getErrorMessage(error, "Registration failed");
       toast.error("Error", { description: msg });
       throw error;
     } finally {
@@ -50,34 +112,38 @@ export function useAuth() {
     }
   }, []);
 
+  /**
+   * Login with email and password
+   */
   const login = useCallback(
-    async (data: { email: string; password: string }) => {
+    async (credentials: LoginCredentials): Promise<void> => {
       setLoading(true);
       try {
         const res = await apiHelper.post<ApiResponse<AuthResponse>>(
-          "/auth/login",
-          data
+          API_ENDPOINTS.AUTH.LOGIN,
+          credentials
         );
 
         // Store both tokens
+        const authData = res.data.data;
         localStorage.setItem(
-          "authToken",
-          res.data.data.accessToken || res.data.data.token
+          STORAGE_KEYS.AUTH_TOKEN,
+          authData.accessToken || authData.token
         );
-        if (res.data.data.refreshToken) {
-          localStorage.setItem("refreshToken", res.data.data.refreshToken);
+        if (authData.refreshToken) {
+          localStorage.setItem(
+            STORAGE_KEYS.REFRESH_TOKEN,
+            authData.refreshToken
+          );
         }
-        localStorage.setItem("user", JSON.stringify(res.data.data.user));
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(authData.user));
 
-        setUser(res.data.data.user);
+        setUser(authData.user);
 
-        toast.success("Login successful");
-        router.push("/dashboard");
+        toast.success(SUCCESS_MESSAGES.LOGIN);
+        router.push(ROUTES.DASHBOARD);
       } catch (error: unknown) {
-        const axiosError = error as {
-          response?: { data?: { message?: string } };
-        };
-        const msg = axiosError.response?.data?.message || "Login failed";
+        const msg = getErrorMessage(error, "Login failed");
         toast.error("Error", { description: msg });
         throw error;
       } finally {
@@ -87,29 +153,35 @@ export function useAuth() {
     [router]
   );
 
-  const logout = useCallback(async () => {
+  /**
+   * Logout and clear authentication state
+   */
+  const logout = useCallback(async (): Promise<void> => {
     try {
       // Call server logout to revoke refresh token
-      const refreshToken = localStorage.getItem("refreshToken");
+      const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
       if (refreshToken) {
-        await apiHelper.post("/auth/logout", { refreshToken });
+        await apiHelper.post(API_ENDPOINTS.AUTH.LOGOUT, { refreshToken });
       }
     } catch {
       // Ignore errors - we're logging out anyway
     } finally {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
+      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.USER);
       setUser(null);
-      router.push("/login");
-      toast.info("Logged out");
+      router.push(ROUTES.LOGIN);
+      toast.info(SUCCESS_MESSAGES.LOGOUT);
     }
   }, [router]);
 
-  const getProfile = useCallback(async () => {
+  /**
+   * Fetch current user profile
+   */
+  const getProfile = useCallback(async (): Promise<User | null> => {
     try {
-      const res = await apiHelper.get<ApiResponse<User>>("/auth/me");
-      localStorage.setItem("user", JSON.stringify(res.data.data));
+      const res = await apiHelper.get<ApiResponse<User>>(API_ENDPOINTS.AUTH.ME);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(res.data.data));
       setUser(res.data.data);
       return res.data.data;
     } catch (error) {
@@ -118,41 +190,50 @@ export function useAuth() {
     }
   }, []);
 
-  const updateProfile = useCallback(async (data: Partial<User>) => {
-    setLoading(true);
-    try {
-      const res = await apiHelper.put<ApiResponse<User>>("/auth/me", data);
-      localStorage.setItem("user", JSON.stringify(res.data.data));
-      setUser(res.data.data);
-      toast.success("Profile updated");
-      return res.data.data;
-    } catch (error: any) {
-      toast.error("Failed to update profile");
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  /**
+   * Update user profile
+   */
+  const updateProfile = useCallback(
+    async (data: Partial<User>): Promise<User> => {
+      setLoading(true);
+      try {
+        const res = await apiHelper.put<ApiResponse<User>>(
+          API_ENDPOINTS.AUTH.ME,
+          data
+        );
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(res.data.data));
+        setUser(res.data.data);
+        toast.success(SUCCESS_MESSAGES.PROFILE_UPDATED);
+        return res.data.data;
+      } catch (error: unknown) {
+        toast.error("Failed to update profile");
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
+  /**
+   * Set password for new user
+   */
   const setPassword = useCallback(
-    async (token: string, password: string) => {
+    async (token: string, password: string): Promise<void> => {
       setLoading(true);
       try {
         const res = await apiHelper.post<ApiResponse<null>>(
-          "/auth/set-password",
-          {
-            token,
-            password,
-          }
+          API_ENDPOINTS.AUTH.SET_PASSWORD,
+          { token, password }
         );
 
         toast.success("Password set!", {
           description: res.data.message,
         });
 
-        router.push("/login");
-      } catch (error: any) {
-        const msg = error.response?.data?.message || "Failed to set password";
+        router.push(ROUTES.LOGIN);
+      } catch (error: unknown) {
+        const msg = getErrorMessage(error, "Failed to set password");
         toast.error("Error", { description: msg });
         throw error;
       } finally {
@@ -162,24 +243,28 @@ export function useAuth() {
     [router]
   );
 
+  /**
+   * Complete Google signup with additional info
+   */
   const googleSignup = useCallback(
-    async (data: { email: string; name: string; company: string }) => {
+    async (data: RegisterData): Promise<void> => {
       setLoading(true);
       try {
         const res = await apiHelper.post<ApiResponse<AuthResponse>>(
-          "/auth/google-signup",
+          API_ENDPOINTS.AUTH.GOOGLE_SIGNUP,
           data
         );
 
-        localStorage.setItem("authToken", res.data.data.token);
-        localStorage.setItem("user", JSON.stringify(res.data.data.user));
+        const authData = res.data.data;
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authData.token);
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(authData.user));
 
-        setUser(res.data.data.user);
+        setUser(authData.user);
 
         toast.success("Registration successful!");
-        router.push("/dashboard");
-      } catch (error: any) {
-        const msg = error.response?.data?.message || "Google signup failed";
+        router.push(ROUTES.DASHBOARD);
+      } catch (error: unknown) {
+        const msg = getErrorMessage(error, "Google signup failed");
         toast.error("Error", { description: msg });
         throw error;
       } finally {

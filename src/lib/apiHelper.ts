@@ -4,6 +4,7 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
+import { STORAGE_KEYS, API_ENDPOINTS, API_CONFIG, ROUTES } from "./constants";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -16,7 +17,7 @@ const apiHelper: AxiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 30000, // 30 second timeout
+  timeout: API_CONFIG.TIMEOUT,
 });
 
 /**
@@ -25,14 +26,14 @@ const apiHelper: AxiosInstance = axios.create({
 apiHelper.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("authToken");
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error: AxiosError) => Promise.reject(error)
 );
 
 /**
@@ -44,7 +45,13 @@ let failedQueue: Array<{
   reject: (reason?: unknown) => void;
 }> = [];
 
-const processQueue = (error: Error | null, token: string | null = null) => {
+/**
+ * Process queued requests after token refresh
+ */
+const processQueue = (
+  error: Error | null,
+  token: string | null = null
+): void => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -69,7 +76,7 @@ apiHelper.interceptors.response.use(
     if (error.response?.status === 401) {
       const refreshToken =
         typeof window !== "undefined"
-          ? localStorage.getItem("refreshToken")
+          ? localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN)
           : null;
 
       // If we have a refresh token and haven't tried to refresh yet
@@ -89,16 +96,19 @@ apiHelper.interceptors.response.use(
 
         try {
           // Attempt to refresh the token
-          const response = await axios.post(`${API_URL}/auth/refresh-token`, {
-            refreshToken,
-          });
+          const response = await axios.post(
+            `${API_URL}${API_ENDPOINTS.AUTH.REFRESH_TOKEN}`,
+            {
+              refreshToken,
+            }
+          );
 
           const { accessToken, refreshToken: newRefreshToken } =
             response.data.data;
 
-          localStorage.setItem("authToken", accessToken);
+          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, accessToken);
           if (newRefreshToken) {
-            localStorage.setItem("refreshToken", newRefreshToken);
+            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
           }
 
           processQueue(null, accessToken);
@@ -125,15 +135,15 @@ apiHelper.interceptors.response.use(
 /**
  * Clears auth data and redirects to login
  */
-function handleLogout() {
+function handleLogout(): void {
   if (typeof window !== "undefined") {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.USER);
 
     // Redirect to login only if not already there
-    if (!window.location.pathname.includes("/login")) {
-      window.location.href = "/login";
+    if (!window.location.pathname.includes(ROUTES.LOGIN)) {
+      window.location.href = ROUTES.LOGIN;
     }
   }
 }
