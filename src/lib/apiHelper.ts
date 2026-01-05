@@ -6,7 +6,18 @@ import axios, {
 } from "axios";
 import { STORAGE_KEYS, API_ENDPOINTS, API_CONFIG, ROUTES } from "./constants";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const getApiUrl = (): string => {
+  const url = process.env.NEXT_PUBLIC_API_URL;
+  if (!url) {
+    if (typeof window !== "undefined") {
+      console.error("FATAL: NEXT_PUBLIC_API_URL is not defined!");
+    }
+    return ""; // Fallback to empty string to avoid crashes, but requests will fail
+  }
+  return url;
+};
+
+export const API_URL = getApiUrl();
 
 /**
  * Axios instance with authentication interceptors
