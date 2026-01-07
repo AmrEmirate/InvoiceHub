@@ -9,10 +9,17 @@ import { STORAGE_KEYS, API_ENDPOINTS, API_CONFIG, ROUTES } from "./constants";
 const getApiUrl = (): string => {
   const url = process.env.NEXT_PUBLIC_API_URL;
   if (!url) {
+    const errorMsg =
+      "FATAL: NEXT_PUBLIC_API_URL environment variable is not defined! API requests will fail.";
+
     if (typeof window !== "undefined") {
-      console.error("FATAL: NEXT_PUBLIC_API_URL is not defined!");
+      console.error(errorMsg);
+      // In development, throw to make the error obvious
+      if (process.env.NODE_ENV === "development") {
+        throw new Error(errorMsg);
+      }
     }
-    return ""; // Fallback to empty string to avoid crashes, but requests will fail
+    return ""; // Fallback to empty string in production to avoid crashes
   }
   return url;
 };
@@ -21,31 +28,16 @@ export const API_URL = getApiUrl();
 
 /**
  * Axios instance with authentication interceptors
- * Automatically attaches auth token and handles 401 responses
+ * Automatically handles 401 responses and sends cookies
  */
 const apiHelper: AxiosInstance = axios.create({
   baseURL: API_URL,
+  withCredentials: true, // Important: Send cookies with requests
   headers: {
     "Content-Type": "application/json",
   },
   timeout: API_CONFIG.TIMEOUT,
 });
-
-/**
- * Request interceptor - attaches auth token to requests
- */
-apiHelper.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return config;
-  },
-  (error: AxiosError) => Promise.reject(error)
-);
 
 /**
  * Flag to prevent multiple simultaneous token refresh attempts
@@ -84,58 +76,42 @@ apiHelper.interceptors.response.use(
     };
 
     // Handle 401 Unauthorized
-    if (error.response?.status === 401) {
-      const refreshToken =
-        typeof window !== "undefined"
-          ? localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN)
-          : null;
-
-      // If we have a refresh token and haven't tried to refresh yet
-      if (refreshToken && !originalRequest._retry) {
-        if (isRefreshing) {
-          // Queue the request while refresh is in progress
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          }).then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return apiHelper(originalRequest);
-          });
-        }
-
-        originalRequest._retry = true;
-        isRefreshing = true;
-
-        try {
-          // Attempt to refresh the token
-          const response = await axios.post(
-            `${API_URL}${API_ENDPOINTS.AUTH.REFRESH_TOKEN}`,
-            {
-              refreshToken,
-            }
-          );
-
-          const { accessToken, refreshToken: newRefreshToken } =
-            response.data.data;
-
-          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, accessToken);
-          if (newRefreshToken) {
-            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
-          }
-
-          processQueue(null, accessToken);
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return apiHelper(originalRequest);
-        } catch (refreshError) {
-          processQueue(refreshError as Error, null);
-          // Refresh failed - clear auth and redirect to login
-          handleLogout();
-          return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
-        }
-      } else {
-        // No refresh token or already tried - logout
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (originalRequest.url?.includes(API_ENDPOINTS.AUTH.REFRESH_TOKEN)) {
+        // If refresh fails, logout
         handleLogout();
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        // Queue the request while refresh is in progress
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(() => {
+          return apiHelper(originalRequest);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Attempt to refresh the token using HttpOnly cookie
+        await axios.post(
+          `${API_URL}${API_ENDPOINTS.AUTH.REFRESH_TOKEN}`,
+          {}, // Empty body, refresh token is in cookie
+          { withCredentials: true }
+        );
+
+        processQueue(null);
+        return apiHelper(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError as Error, null);
+        // Refresh failed - clear auth and redirect to login
+        handleLogout();
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 
@@ -148,9 +124,11 @@ apiHelper.interceptors.response.use(
  */
 function handleLogout(): void {
   if (typeof window !== "undefined") {
+    // We only need to clear user data, cookies are HttpOnly
+    localStorage.removeItem(STORAGE_KEYS.USER);
+    // Backward compatibility cleaning
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.USER);
 
     // Redirect to login only if not already there
     if (!window.location.pathname.includes(ROUTES.LOGIN)) {

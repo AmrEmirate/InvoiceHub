@@ -72,15 +72,14 @@ export function useAuth() {
     const initAuth = (): void => {
       if (typeof window !== "undefined") {
         const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
-        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-
-        if (storedUser && token) {
+        // Token check is no longer needed as it's in HttpOnly cookie
+        // We rely on the API call to /me to verify session validity
+        if (storedUser) {
           try {
             setUser(JSON.parse(storedUser));
           } catch {
             console.error("Failed to parse user from local storage");
             localStorage.removeItem(STORAGE_KEYS.USER);
-            localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
           }
         }
       }
@@ -124,18 +123,8 @@ export function useAuth() {
           credentials
         );
 
-        // Store both tokens
+        // Store user data only, tokens are in HttpOnly cookies
         const authData = res.data.data;
-        localStorage.setItem(
-          STORAGE_KEYS.AUTH_TOKEN,
-          authData.accessToken || authData.token
-        );
-        if (authData.refreshToken) {
-          localStorage.setItem(
-            STORAGE_KEYS.REFRESH_TOKEN,
-            authData.refreshToken
-          );
-        }
         localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(authData.user));
 
         setUser(authData.user);
@@ -159,16 +148,17 @@ export function useAuth() {
   const logout = useCallback(async (): Promise<void> => {
     try {
       // Call server logout to revoke refresh token
-      const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-      if (refreshToken) {
-        await apiHelper.post(API_ENDPOINTS.AUTH.LOGOUT, { refreshToken });
-      }
+      // For cookie-based auth, we can just call logout endpoint
+      // The endpoint will check for the cookie if no body is provided
+      await apiHelper.post(API_ENDPOINTS.AUTH.LOGOUT, {});
     } catch {
       // Ignore errors - we're logging out anyway
     } finally {
+      // We only need to clear user data, cookies are cleared by server response
+      localStorage.removeItem(STORAGE_KEYS.USER);
+      // Clean up legacy tokens if they exist
       localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-      localStorage.removeItem(STORAGE_KEYS.USER);
       setUser(null);
       router.push(ROUTES.LOGIN);
       toast.info(SUCCESS_MESSAGES.LOGOUT);
@@ -256,7 +246,7 @@ export function useAuth() {
         );
 
         const authData = res.data.data;
-        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authData.token);
+        // Token handled by cookie
         localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(authData.user));
 
         setUser(authData.user);
